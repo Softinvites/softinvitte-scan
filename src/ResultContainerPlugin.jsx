@@ -109,7 +109,7 @@ const tokenFromStorage = localStorage.getItem("token");
 const tokenToUse = tokenFromUrl || tokenFromStorage;
 
     // Send the entire qrData to the backend
-    const response = await fetch('http://localhost:4000/guest/scan-qrcode', {
+    const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -132,8 +132,8 @@ const tokenToUse = tokenFromUrl || tokenFromStorage;
     
       setTimeout(() => {
         const redirectUrl = token
-          ? `http://localhost:3039/guest?token=${token}`
-          : `http://localhost:3039/guest`;
+          ? `https://www.softinvite.com/blog?token=${token}`
+          : `https://www.softinvite.com/blog`;
     
         window.location.href = redirectUrl;
       }, 5000);
