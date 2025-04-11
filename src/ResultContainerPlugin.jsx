@@ -166,42 +166,42 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
   return (
     <>
-      {errorMessage && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            bgcolor: '#fff',
-            zIndex: 1000,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Box
-            sx={{
-              width: 120,
-              height: 120,
-              borderRadius: '50%',
-              bgcolor: '#d32f2f',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mb: 3,
-            }}
-          >
-            <Typography variant="h2" color="white">✕</Typography>
-          </Box>
-          <Typography variant="h6" align="center" fontWeight="bold">
-            {errorMessage}
-          </Typography>
-        </Box>
-      )}
-
+     {errorMessage && (
+  <Box
+    sx={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      minHeight: '100vh',  // Allows content to overflow if necessary
+      bgcolor: '#fff',
+      zIndex: 1000,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'auto',  // Ensures content is visible if it overflows
+    }}
+  >
+    <Box
+      sx={{
+        width: 120,
+        height: 120,
+        borderRadius: '50%',
+        bgcolor: '#d32f2f',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        mb: 3,
+      }}
+    >
+      <Typography variant="h2" color="white">✕</Typography>
+    </Box>
+    <Typography variant="h6" align="center" fontWeight="bold">
+      {errorMessage}
+    </Typography>
+  </Box>
+)}
       <Box sx={{ padding: 4 }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Scanned Results ({results.length})
