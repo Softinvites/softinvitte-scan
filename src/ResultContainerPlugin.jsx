@@ -92,35 +92,33 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
-      if (results.length === 0 || hasProcessed) return; // Skip if already processed
-      
+      if (results.length === 0) return;
+  
       let qrData = results[0].decodedText.trim();
-
+  
       // Skip API call for test QR
       if (qrData === "Test QR Code 1") {
         console.log("Skipping test QR code.");
-        setHasProcessed(true);
         return;
       }
-
+  
       const parsed = parseQrData(qrData);
       const firstName = parsed["First Name"]?.trim();
       const lastName = parsed["Last Name"]?.trim();
       const eventName = parsed["Event"]?.trim();
-
+  
       if (!firstName || !lastName || !eventName) {
         setErrorMessage("Invalid QR code format.");
-        setHasProcessed(true);
         setTimeout(() => redirectAfterDelay(), 200);
         return;
       }
-
+  
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
         const tokenToUse = tokenFromUrl || tokenFromStorage;
-
+  
         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
           method: 'POST',
           headers: {
@@ -129,9 +127,10 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           },
           body: JSON.stringify({ qrData }),
         });
-
+  
         const data = await response.json();
-
+  
+        // Handle 404 errors
         if (response.status === 404) {
           if (data.message.includes("Event not found")) {
             setErrorMessage("Event not found.");
@@ -140,36 +139,33 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           } else {
             setErrorMessage("Guest not found.");
           }
-          setHasProcessed(true);
           setTimeout(() => redirectAfterDelay(), 200);
           return;
         }
-
-        if (response.status === 200 && data.message?.includes("already checked in")) {
+  
+        // Handle already checked in case
+        if (data.message?.includes("already checked in")) {
           setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
-          setHasProcessed(true);
           setTimeout(() => redirectAfterDelay(), 200);
           return;
         }
-
+  
+        // Only handle success if it's NOT already checked in
         if (response.ok) {
           setShowSuccess(true);
-          setHasProcessed(true);
           redirectAfterDelay();
-          return; // Explicit return to prevent further processing
         }
-
+  
       } catch (error) {
         console.error("🚨 Error:", error);
         setErrorMessage("Server error during check-in.");
-        setHasProcessed(true);
         setTimeout(() => redirectAfterDelay(), 200);
       }
     };
-
+  
     sendResultsToBackend(results);
-  }, [results, hasProcessed]); // Add hasProcessed to dependencies
-
+  }, [results]);
+  
   return (
     <>
       {/* Bold Red Toast for Error */}
