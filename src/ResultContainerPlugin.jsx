@@ -108,7 +108,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
       if (!firstName || !lastName || !eventName) {
         setErrorMessage("Invalid QR code format.");
-        redirectAfterDelay();
+        setTimeout(() => redirectAfterDelay(), 200);
         return;
       }
 
@@ -132,18 +132,20 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
         if (response.status === 404) {
           if (data.message.includes("Event not found")) {
             setErrorMessage("Event not found.");
+            setTimeout(() => redirectAfterDelay(), 200);
           } else if (data.message.includes("Guest not found")) {
             setErrorMessage("Guest not found.");
+            setTimeout(() => redirectAfterDelay(), 200);
           } else {
             setErrorMessage("Guest not found.");
+            setTimeout(() => redirectAfterDelay(), 200);
           }
-          redirectAfterDelay();
           return;
         }
-
+        
         if (response.status === 200 && data.message?.includes("already checked in")) {
           setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
-          redirectAfterDelay();
+          setTimeout(() => redirectAfterDelay(), 200);
           return;
         }
 
@@ -155,7 +157,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
       } catch (error) {
         console.error("🚨 Error:", error);
         setErrorMessage("Server error during check-in.");
-        redirectAfterDelay();
+        setTimeout(() => redirectAfterDelay(), 200);
       }
     };
 
