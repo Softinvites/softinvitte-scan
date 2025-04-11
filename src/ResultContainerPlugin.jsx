@@ -71,107 +71,136 @@ const ResultContainerTable = ({ data }) => {
 
 const ResultContainerPlugin = ({ results: propsResults }) => {
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
   );
 
   useEffect(() => {
-
-
-const sendResultsToBackend = async (results) => {
-  if (results.length === 0) return;
-
-  try {
-    let qrData = results[0].decodedText.trim();
-
-    // Parse the QR data
-    const parsed = parseQrData(qrData);
-
-    // Extract the necessary fields from the parsed QR data
-    const firstName = parsed["First Name"]?.trim();
-    const lastName = parsed["Last Name"]?.trim();
-    const eventName = parsed["Event"]?.trim();
-
-    console.log("📦 Parsed QR fields:", { firstName, lastName, eventName });
-
-    // Validate the required fields
-    if (!firstName || !lastName || !eventName) {
-      console.error("❌ Missing required QR fields");
-      return;
-    }
-
-
-  const urlParams = new URLSearchParams(window.location.search);
-const tokenFromUrl = urlParams.get("token");
-const tokenFromStorage = localStorage.getItem("token");
-
-const tokenToUse = tokenFromUrl || tokenFromStorage;
-
-    // Send the entire qrData to the backend
-    const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${tokenToUse}`,
-      },
-      body: JSON.stringify({ qrData })  // Send the full qrData as the payload
-    });
-
-    const data = await response.json();
-
-    console.log("⬅️ Backend response:", data);
-
-    if (response.ok) {
-      console.log("✅ Check-in success:", data);
-      setShowSuccess(true);
-    
-      // Get the token from the URL to preserve it if it exists
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get("token");
-    
-      setTimeout(() => {
-        const redirectUrl = token
-          ? `https://www.softinvite.com/blog?token=${token}`
-          : `https://www.softinvite.com/blog`;
-    
-        window.location.href = redirectUrl;
-      }, 5000);
-    } else {
-      console.error("❌ Check-in failed:", data.message);
-    }
-    
-  } catch (error) {
-    console.error("🚨 Error sending data to backend:", error);
-  }
-};
-
-
+    const sendResultsToBackend = async (results) => {
+      if (results.length === 0) return;
+  
+      let qrData = results[0].decodedText.trim();
+  
+      // ✅ Skip API call and redirect for test QR
+      if (qrData === "Test QR Code 1") {
+        console.log("Skipping test QR code.");
+        return;
+      }
+  
+      const parsed = parseQrData(qrData);
+      const firstName = parsed["First Name"]?.trim();
+      const lastName = parsed["Last Name"]?.trim();
+      const eventName = parsed["Event"]?.trim();
+  
+      if (!firstName || !lastName || !eventName) {
+        setErrorMessage("Invalid QR code format.");
+        return;
+      }
+  
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tokenFromUrl = urlParams.get("token");
+        const tokenFromStorage = localStorage.getItem("token");
+        const tokenToUse = tokenFromUrl || tokenFromStorage;
+  
+        const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tokenToUse}`,
+          },
+          body: JSON.stringify({ qrData }),
+        });
+  
+        const data = await response.json();
+  
+        if (response.ok) {
+          setShowSuccess(true);
+          setTimeout(() => {
+            const redirectUrl = tokenFromUrl
+              ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
+              : `https://www.softinvite.com/blog`;
+            window.location.href = redirectUrl;
+          }, 5000);
+        } else {
+          if (data.message?.includes("already checked in")) {
+            setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
+          } else {
+            setErrorMessage("Guest not found.");
+          }
+        }
+      } catch (error) {
+        console.error("🚨 Error:", error);
+        setErrorMessage("Server error during check-in.");
+      }
+    };
+  
     sendResultsToBackend(results);
   }, [results]);
+  
+  
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Scanned Results ({results.length})
-      </Typography>
-
-      {results.length > 0 ? (
-        <ResultContainerTable data={results} />
-      ) : (
-        <Box display="flex" justifyContent="center" mt={4}>
-          <CircularProgress />
+    <>
+      {errorMessage && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            bgcolor: '#fff',
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Box
+            sx={{
+              width: 120,
+              height: 120,
+              borderRadius: '50%',
+              bgcolor: '#d32f2f',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 3,
+            }}
+          >
+            <Typography variant="h2" color="white">✕</Typography>
+          </Box>
+          <Typography variant="h6" align="center" fontWeight="bold">
+            {errorMessage}
+          </Typography>
         </Box>
       )}
 
-      <Snackbar open={showSuccess} autoHideDuration={5000}>
-        <Alert severity="success" sx={{ width: '100%' }}>
-          Guest successfully checked in
-        </Alert>
-      </Snackbar>
-    </Box>
+      <Box sx={{ padding: 4 }}>
+        <Typography variant="h5" fontWeight="bold" gutterBottom>
+          Scanned Results ({results.length})
+        </Typography>
+
+        {results.length > 0 ? (
+          <ResultContainerTable data={results} />
+        ) : (
+          <Box display="flex" justifyContent="center" mt={4}>
+            <CircularProgress />
+          </Box>
+        )}
+
+        <Snackbar open={showSuccess} autoHideDuration={5000}>
+          <Alert severity="success" sx={{ width: '100%' }}>
+            Guest successfully checked in
+          </Alert>
+        </Snackbar>
+      </Box>
+    </>
   );
 };
-
 
 export default ResultContainerPlugin;
