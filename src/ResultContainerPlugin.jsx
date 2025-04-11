@@ -132,17 +132,15 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
         if (response.status === 404) {
           if (data.message.includes("Event not found")) {
             setErrorMessage("Event not found.");
-            setTimeout(() => redirectAfterDelay(), 200);
           } else if (data.message.includes("Guest not found")) {
             setErrorMessage("Guest not found.");
-            setTimeout(() => redirectAfterDelay(), 200);
           } else {
             setErrorMessage("Guest not found.");
-            setTimeout(() => redirectAfterDelay(), 200);
           }
+          setTimeout(() => redirectAfterDelay(), 200);
           return;
         }
-        
+
         if (response.status === 200 && data.message?.includes("already checked in")) {
           setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
           setTimeout(() => redirectAfterDelay(), 200);
@@ -166,42 +164,31 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
   return (
     <>
-     {errorMessage && (
-  <Box
-    sx={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100vw',
-      minHeight: '100vh',  // Allows content to overflow if necessary
-      bgcolor: '#fff',
-      zIndex: 1000,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'auto',  // Ensures content is visible if it overflows
-    }}
-  >
-    <Box
-      sx={{
-        width: 120,
-        height: 120,
-        borderRadius: '50%',
-        bgcolor: '#d32f2f',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        mb: 3,
-      }}
-    >
-      <Typography variant="h2" color="white">✕</Typography>
-    </Box>
-    <Typography variant="h6" align="center" fontWeight="bold">
-      {errorMessage}
-    </Typography>
-  </Box>
-)}
+      {/* Bold Red Toast for Error */}
+      <Snackbar
+        open={Boolean(errorMessage)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        autoHideDuration={7000}
+        onClose={() => setErrorMessage("")}
+        sx={{
+          zIndex: 1500,
+          mt: 4,
+          '& .MuiAlert-root': {
+            fontSize: '1.2rem',
+            fontWeight: 'bold',
+            backgroundColor: '#d32f2f',
+            color: '#fff',
+            padding: '20px 30px',
+            borderRadius: '12px',
+            boxShadow: 6,
+          }
+        }}
+      >
+        <Alert severity="error" variant="filled">
+          {errorMessage}
+        </Alert>
+      </Snackbar>
+
       <Box sx={{ padding: 4 }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Scanned Results ({results.length})
