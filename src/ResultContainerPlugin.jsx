@@ -88,35 +88,38 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
       window.location.href = redirectUrl;
     }, 5000);
   };
+
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
       if (results.length === 0) return;
-  
+
       let qrData = results[0].decodedText.trim();
-  
+
       // Skip API call for test QR
       if (qrData === "Test QR Code 1") {
         console.log("Skipping test QR code.");
         return;
       }
-  
+
       const parsed = parseQrData(qrData);
       const firstName = parsed["First Name"]?.trim();
       const lastName = parsed["Last Name"]?.trim();
       const eventName = parsed["Event"]?.trim();
-  
+
       if (!firstName || !lastName || !eventName) {
-        setErrorMessage("Invalid QR code format.");
-        setTimeout(() => redirectAfterDelay(), 200);
+        setTimeout(() => {
+          setErrorMessage("Invalid QR code format.");
+          redirectAfterDelay();
+        }, 2500);
         return;
       }
-  
+
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
         const tokenToUse = tokenFromUrl || tokenFromStorage;
-  
+
         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
           method: 'POST',
           headers: {
@@ -125,49 +128,54 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           },
           body: JSON.stringify({ qrData }),
         });
-  
+
         const data = await response.json();
-  
+
         // Handle 404 errors
         if (response.status === 404) {
-          if (data.message.includes("Event not found")) {
-            setErrorMessage("Event not found.");
-          } else if (data.message.includes("Guest not found")) {
-            setErrorMessage("Guest not found.");
-          } else {
-            setErrorMessage("Guest not found.");
-          }
-          setTimeout(() => redirectAfterDelay(), 200);
+          setTimeout(() => {
+            setErrorMessage(
+              data.message.includes("Event not found")
+                ? "Event not found."
+                : "Guest not found."
+            );
+            redirectAfterDelay();
+          }, 2500);
           return;
         }
-  
+
         // Handle already checked in case
         if (data.message?.includes("already checked in")) {
-          setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
-          setTimeout(() => redirectAfterDelay(), 200);
+          setTimeout(() => {
+            setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
+            redirectAfterDelay();
+          }, 2500);
           return;
         }
-  
-        // Only handle success if it's NOT already checked in
+
+        // Handle success
         if (response.ok) {
           setShowSuccess(true);
-          redirectAfterDelay();
+          setTimeout(() => {
+            redirectAfterDelay();
+          }, 2000);
         }
-  
+
       } catch (error) {
         console.error("🚨 Error:", error);
-        setErrorMessage("Server error during check-in.");
-        setTimeout(() => redirectAfterDelay(), 200);
+        setTimeout(() => {
+          setErrorMessage("Server error during check-in.");
+          redirectAfterDelay();
+        }, 2500);
       }
     };
-  
+
     sendResultsToBackend(results);
   }, [results]);
-  
 
   return (
     <>
-      {/* Bold Red Toast for Error */}
+      {/* Error Message Toast */}
       <Snackbar
         open={Boolean(errorMessage)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
@@ -205,13 +213,11 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           </Box>
         )}
 
-        {!errorMessage && (
-          <Snackbar open={showSuccess} autoHideDuration={5000}>
-            <Alert severity="success" sx={{ width: '100%' }}>
-              Guest successfully checked in
-            </Alert>
-          </Snackbar>
-        )}
+        <Snackbar open={showSuccess} autoHideDuration={2000}>
+          <Alert severity="success" sx={{ width: '100%' }}>
+            Guest successfully checked in
+          </Alert>
+        </Snackbar>
       </Box>
     </>
   );
