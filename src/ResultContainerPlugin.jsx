@@ -77,34 +77,47 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
   );
 
+  const redirectAfterDelay = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get("token");
+    const redirectUrl = tokenFromUrl
+      ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
+      : `https://www.softinvite.com/blog`;
+
+    setTimeout(() => {
+      window.location.href = redirectUrl;
+    }, 5000);
+  };
+
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
       if (results.length === 0) return;
-  
+
       let qrData = results[0].decodedText.trim();
-  
-      // ✅ Skip API call and redirect for test QR
+
+      // Skip API call for test QR
       if (qrData === "Test QR Code 1") {
         console.log("Skipping test QR code.");
         return;
       }
-  
+
       const parsed = parseQrData(qrData);
       const firstName = parsed["First Name"]?.trim();
       const lastName = parsed["Last Name"]?.trim();
       const eventName = parsed["Event"]?.trim();
-  
+
       if (!firstName || !lastName || !eventName) {
         setErrorMessage("Invalid QR code format.");
+        redirectAfterDelay();
         return;
       }
-  
+
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
         const tokenToUse = tokenFromUrl || tokenFromStorage;
-  
+
         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
           method: 'POST',
           headers: {
@@ -113,34 +126,41 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           },
           body: JSON.stringify({ qrData }),
         });
-  
+
         const data = await response.json();
-  
-        if (response.ok) {
-          setShowSuccess(true);
-          setTimeout(() => {
-            const redirectUrl = tokenFromUrl
-              ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
-              : `https://www.softinvite.com/blog`;
-            window.location.href = redirectUrl;
-          }, 5000);
-        } else {
-          if (data.message?.includes("already checked in")) {
-            setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
+
+        if (response.status === 404) {
+          if (data.message.includes("Event not found")) {
+            setErrorMessage("Event not found.");
+          } else if (data.message.includes("Guest not found")) {
+            setErrorMessage("Guest not found.");
           } else {
             setErrorMessage("Guest not found.");
           }
+          redirectAfterDelay();
+          return;
         }
+
+        if (response.status === 200 && data.message?.includes("already checked in")) {
+          setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
+          redirectAfterDelay();
+          return;
+        }
+
+        if (response.ok) {
+          setShowSuccess(true);
+          redirectAfterDelay();
+        }
+
       } catch (error) {
         console.error("🚨 Error:", error);
         setErrorMessage("Server error during check-in.");
+        redirectAfterDelay();
       }
     };
-  
+
     sendResultsToBackend(results);
   }, [results]);
-  
-  
 
   return (
     <>
@@ -193,11 +213,13 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           </Box>
         )}
 
-        <Snackbar open={showSuccess} autoHideDuration={5000}>
-          <Alert severity="success" sx={{ width: '100%' }}>
-            Guest successfully checked in
-          </Alert>
-        </Snackbar>
+        {!errorMessage && (
+          <Snackbar open={showSuccess} autoHideDuration={5000}>
+            <Alert severity="success" sx={{ width: '100%' }}>
+              Guest successfully checked in
+            </Alert>
+          </Snackbar>
+        )}
       </Box>
     </>
   );
