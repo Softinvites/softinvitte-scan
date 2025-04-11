@@ -149,7 +149,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           setTimeout(() => {
             setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
             redirectAfterDelay();
-          }, 2500);
+          }, 4000);
           return;
         }
 
@@ -166,7 +166,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
         setTimeout(() => {
           setErrorMessage("Server error during check-in.");
           redirectAfterDelay();
-        }, 2500);
+        }, 4000);
       }
     };
 
