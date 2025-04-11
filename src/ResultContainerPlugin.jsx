@@ -72,7 +72,6 @@ const ResultContainerTable = ({ data }) => {
 const ResultContainerPlugin = ({ results: propsResults }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [hasProcessed, setHasProcessed] = useState(false); // New state to track if we've processed
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
@@ -89,7 +88,6 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
       window.location.href = redirectUrl;
     }, 5000);
   };
-
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
       if (results.length === 0) return;
@@ -166,6 +164,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
     sendResultsToBackend(results);
   }, [results]);
   
+
   return (
     <>
       {/* Bold Red Toast for Error */}
@@ -206,28 +205,13 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           </Box>
         )}
 
-        <Snackbar 
-          open={showSuccess} 
-          autoHideDuration={5000}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          sx={{
-            zIndex: 1500,
-            mt: 4,
-            '& .MuiAlert-root': {
-              fontSize: '1.2rem',
-              fontWeight: 'bold',
-              backgroundColor: '#4caf50',
-              color: '#fff',
-              padding: '20px 30px',
-              borderRadius: '12px',
-              boxShadow: 6,
-            }
-          }}
-        >
-          <Alert severity="success" variant="filled">
-            Guest successfully checked in
-          </Alert>
-        </Snackbar>
+        {!errorMessage && (
+          <Snackbar open={showSuccess} autoHideDuration={5000}>
+            <Alert severity="success" sx={{ width: '100%' }}>
+              Guest successfully checked in
+            </Alert>
+          </Snackbar>
+        )}
       </Box>
     </>
   );
