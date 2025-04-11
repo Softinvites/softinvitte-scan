@@ -83,43 +83,40 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
     const redirectUrl = tokenFromUrl
       ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
       : `https://www.softinvite.com/blog`;
-
+  
     setTimeout(() => {
       window.location.href = redirectUrl;
-    }, 5000);
+    }, 3000); 
   };
 
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
       if (results.length === 0) return;
-
+  
       let qrData = results[0].decodedText.trim();
-
-      // Skip API call for test QR
+  
       if (qrData === "Test QR Code 1") {
         console.log("Skipping test QR code.");
         return;
       }
-
+  
       const parsed = parseQrData(qrData);
       const firstName = parsed["First Name"]?.trim();
       const lastName = parsed["Last Name"]?.trim();
       const eventName = parsed["Event"]?.trim();
-
+  
       if (!firstName || !lastName || !eventName) {
-        setTimeout(() => {
-          setErrorMessage("Invalid QR code format.");
-          redirectAfterDelay();
-        }, 2500);
+        setErrorMessage("Invalid QR code format.");
+        redirectAfterDelay();
         return;
       }
-
+  
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
         const tokenToUse = tokenFromUrl || tokenFromStorage;
-
+  
         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
           method: 'POST',
           headers: {
@@ -128,50 +125,47 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           },
           body: JSON.stringify({ qrData }),
         });
-
+  
         const data = await response.json();
-
-        // Handle 404 errors
+  
+        // Early return for known errors
         if (response.status === 404) {
-          setTimeout(() => {
-            setErrorMessage(
-              data.message.includes("Event not found")
-                ? "Event not found."
-                : "Guest not found."
-            );
-            redirectAfterDelay();
-          }, 2500);
+          setErrorMessage(
+            data.message.includes("Event not found")
+              ? "Event not found."
+              : "Guest not found."
+          );
+          redirectAfterDelay();
           return;
         }
-
-        // Handle already checked in case
+  
         if (data.message?.includes("already checked in")) {
-          setTimeout(() => {
-            setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
-            redirectAfterDelay();
-          }, 4000);
+          setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
+          redirectAfterDelay();
           return;
         }
-
-        // Handle success
+  
         if (response.ok) {
           setShowSuccess(true);
           setTimeout(() => {
             redirectAfterDelay();
           }, 2000);
+        } else {
+          // Catch all unexpected errors
+          setErrorMessage(data.message || "Unexpected server response.");
+          redirectAfterDelay();
         }
-
+  
       } catch (error) {
         console.error("🚨 Error:", error);
-        setTimeout(() => {
-          setErrorMessage("Server error during check-in.");
-          redirectAfterDelay();
-        }, 4000);
+        setErrorMessage("Server error during check-in.");
+        redirectAfterDelay();
       }
     };
-
+  
     sendResultsToBackend(results);
   }, [results]);
+  
 
   return (
     <>
