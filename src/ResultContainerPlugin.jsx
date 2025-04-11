@@ -72,6 +72,7 @@ const ResultContainerTable = ({ data }) => {
 const ResultContainerPlugin = ({ results: propsResults }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasProcessed, setHasProcessed] = useState(false); // New state to track if we've processed
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
@@ -91,13 +92,14 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
-      if (results.length === 0) return;
-
+      if (results.length === 0 || hasProcessed) return; // Skip if already processed
+      
       let qrData = results[0].decodedText.trim();
 
       // Skip API call for test QR
       if (qrData === "Test QR Code 1") {
         console.log("Skipping test QR code.");
+        setHasProcessed(true);
         return;
       }
 
@@ -108,6 +110,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
       if (!firstName || !lastName || !eventName) {
         setErrorMessage("Invalid QR code format.");
+        setHasProcessed(true);
         setTimeout(() => redirectAfterDelay(), 200);
         return;
       }
@@ -137,30 +140,35 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           } else {
             setErrorMessage("Guest not found.");
           }
+          setHasProcessed(true);
           setTimeout(() => redirectAfterDelay(), 200);
           return;
         }
 
         if (response.status === 200 && data.message?.includes("already checked in")) {
           setErrorMessage(`This access code has been used by ${firstName} ${lastName}`);
+          setHasProcessed(true);
           setTimeout(() => redirectAfterDelay(), 200);
           return;
         }
 
         if (response.ok) {
           setShowSuccess(true);
+          setHasProcessed(true);
           redirectAfterDelay();
+          return; // Explicit return to prevent further processing
         }
 
       } catch (error) {
         console.error("🚨 Error:", error);
         setErrorMessage("Server error during check-in.");
+        setHasProcessed(true);
         setTimeout(() => redirectAfterDelay(), 200);
       }
     };
 
     sendResultsToBackend(results);
-  }, [results]);
+  }, [results, hasProcessed]); // Add hasProcessed to dependencies
 
   return (
     <>
@@ -202,13 +210,28 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           </Box>
         )}
 
-        {!errorMessage && (
-          <Snackbar open={showSuccess} autoHideDuration={5000}>
-            <Alert severity="success" sx={{ width: '100%' }}>
-              Guest successfully checked in
-            </Alert>
-          </Snackbar>
-        )}
+        <Snackbar 
+          open={showSuccess} 
+          autoHideDuration={5000}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          sx={{
+            zIndex: 1500,
+            mt: 4,
+            '& .MuiAlert-root': {
+              fontSize: '1.2rem',
+              fontWeight: 'bold',
+              backgroundColor: '#4caf50',
+              color: '#fff',
+              padding: '20px 30px',
+              borderRadius: '12px',
+              boxShadow: 6,
+            }
+          }}
+        >
+          <Alert severity="success" variant="filled">
+            Guest successfully checked in
+          </Alert>
+        </Snackbar>
       </Box>
     </>
   );
