@@ -78,12 +78,11 @@
 
 
 
-
 import React, {
     useEffect,
-    useRef,
     useImperativeHandle,
     forwardRef,
+    useRef,
   } from 'react';
   import { Html5Qrcode } from 'html5-qrcode';
   import { Box, Paper, Typography } from '@mui/material';
@@ -94,40 +93,44 @@ import React, {
     const html5QrCodeRef = useRef(null);
     const cameraIdRef = useRef(null);
   
-    useEffect(() => {
-      const initScanner = async () => {
-        try {
-          const devices = await Html5Qrcode.getCameras();
-          if (devices && devices.length) {
-            cameraIdRef.current = devices[0].id;
+    const getConfig = () => ({
+      fps: props.fps || 15,
+      qrbox: props.qrbox || 250,
+      disableFlip: props.disableFlip ?? false,
+      videoConstraints: {
+        facingMode: "environment",
+        focusMode: "continuous",
+        width: { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720, max: 1080 }
+      }
+    });
   
+    const startScanner = async () => {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length) {
+          cameraIdRef.current = devices[0].id;
+  
+          if (!html5QrCodeRef.current) {
             html5QrCodeRef.current = new Html5Qrcode(qrcodeRegionId);
-  
-            await html5QrCodeRef.current.start(
-              cameraIdRef.current,
-              {
-                fps: 15,
-                qrbox: 250,
-                disableFlip: false,
-                videoConstraints: {
-                  facingMode: "environment",
-                  focusMode: "continuous",
-                  width: { min: 640, ideal: 1280, max: 1920 },
-                  height: { min: 480, ideal: 720, max: 1080 }
-                }
-              },
-              props.qrCodeSuccessCallback,
-              props.qrCodeErrorCallback
-            );
-          } else {
-            console.error("No cameras found.");
           }
-        } catch (err) {
-          console.error("Error initializing scanner:", err);
-        }
-      };
   
-      initScanner();
+          await html5QrCodeRef.current.start(
+            cameraIdRef.current,
+            getConfig(),
+            props.qrCodeSuccessCallback,
+            props.qrCodeErrorCallback
+          );
+        } else {
+          console.error("No cameras found.");
+        }
+      } catch (err) {
+        console.error("Error starting scanner:", err);
+      }
+    };
+  
+    useEffect(() => {
+      startScanner();
   
       return () => {
         if (html5QrCodeRef.current?.isScanning) {
@@ -136,29 +139,17 @@ import React, {
             .catch((err) => console.error("Error stopping scanner on cleanup:", err));
         }
       };
-    }, [props]);
+    }, []);
   
     useImperativeHandle(ref, () => ({
       async restartScanner() {
         if (!html5QrCodeRef.current || !cameraIdRef.current) return;
-  
         try {
           await html5QrCodeRef.current.stop();
           await html5QrCodeRef.current.clear();
-  
           await html5QrCodeRef.current.start(
             cameraIdRef.current,
-            {
-              fps: 15,
-              qrbox: 250,
-              disableFlip: false,
-              videoConstraints: {
-                facingMode: "environment",
-                focusMode: "continuous",
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: { min: 480, ideal: 720, max: 1080 }
-              }
-            },
+            getConfig(),
             props.qrCodeSuccessCallback,
             props.qrCodeErrorCallback
           );
@@ -179,7 +170,7 @@ import React, {
         p: 3,
         mt: 4,
         '& video': {
-          filter: 'contrast(1.2) brightness(1.1)' // Enhanced for better scanning
+          filter: 'contrast(1.2) brightness(1.1)' // better scan visibility
         }
       }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
