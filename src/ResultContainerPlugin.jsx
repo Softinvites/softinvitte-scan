@@ -7,9 +7,9 @@ import {
   Alert,
 } from '@mui/material';
 
-// Example filterResults function
+// Filter function to clean results
 const filterResults = (results) => {
-  return results.filter((result) => result.status === 'valid'); // Customize if needed
+  return results.filter((result) => result.status === 'valid');
 };
 
 const defaultResults = [
@@ -17,7 +17,6 @@ const defaultResults = [
   { id: 2, decodedText: 'Another Default QR', status: 'valid' },
 ];
 
-// Table to show scanned results
 const ResultContainerTable = ({ data }) => (
   <table>
     <thead>
@@ -40,7 +39,10 @@ const ResultContainerTable = ({ data }) => (
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const lastProcessedCode = useRef(""); // Prevent infinite calls
+  const [loading, setLoading] = useState(false);
+
+  const lastProcessedCode = useRef("");
+  const hasProcessed = useRef(false);
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
@@ -48,20 +50,22 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
 
   const restartScannerAfterDelay = useCallback(() => {
     setTimeout(() => {
+      hasProcessed.current = false;
+      lastProcessedCode.current = "";
       scannerRef?.current?.restartScanner?.();
     }, 3000);
   }, [scannerRef]);
 
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
-      if (results.length === 0) return;
+      if (results.length === 0 || hasProcessed.current) return;
 
       const qrData = results[0].decodedText.trim();
-      if (!qrData || qrData === lastProcessedCode.current) {
-        return; // Prevent reprocessing same QR
-      }
+      if (!qrData || qrData === lastProcessedCode.current) return;
 
       lastProcessedCode.current = qrData;
+      hasProcessed.current = true;
+      setLoading(true);
 
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -79,6 +83,14 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         });
 
         const data = await response.json();
+        setLoading(false);
+
+        if (response.status === 500) {
+          console.error("🚨 Server Error (500):", data);
+          setErrorMessage("Server error. Please try again.");
+          restartScannerAfterDelay();
+          return;
+        }
 
         if (response.status === 404) {
           setErrorMessage(
@@ -108,9 +120,11 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           setErrorMessage(data.message || "Unexpected server response.");
           restartScannerAfterDelay();
         }
+
       } catch (error) {
         console.error("🚨 Error during check-in:", error);
-        setErrorMessage("Server error during check-in.");
+        setErrorMessage("Network/server error during check-in.");
+        setLoading(false);
         restartScannerAfterDelay();
       }
     };
@@ -136,7 +150,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
             padding: '20px 30px',
             borderRadius: '12px',
             boxShadow: 6,
-          },
+          }
         }}
       >
         <Alert severity="error" variant="filled">
@@ -149,12 +163,14 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           Scanned Results ({results.length})
         </Typography>
 
-        {results.length > 0 ? (
-          <ResultContainerTable data={results} />
-        ) : (
+        {loading ? (
           <Box display="flex" justifyContent="center" mt={4}>
             <CircularProgress />
           </Box>
+        ) : results.length > 0 ? (
+          <ResultContainerTable data={results} />
+        ) : (
+          <Typography>No results found.</Typography>
         )}
 
         <Snackbar
