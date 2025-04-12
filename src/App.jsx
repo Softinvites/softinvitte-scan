@@ -42,18 +42,29 @@
 // export default App;
 
 
+
 import React, { useRef, useState } from 'react';
 import './App.css';
 import Html5QrcodePlugin from './Html5QrcodePlugin';
 import ResultContainerPlugin from './ResultContainerPlugin';
 
 const App = () => {
+  const scannerRef = useRef(null); // Properly set up ref
   const [decodedResults, setDecodedResults] = useState([]);
-  const scannerRef = useRef();
 
   const onNewScanResult = (decodedText, decodedResult) => {
     console.log("Scan result:", decodedResult);
+
     setDecodedResults([{ decodedText, result: decodedResult }]);
+
+    // Try to pause the scanner safely
+    if (scannerRef.current && scannerRef.current.pause) {
+      scannerRef.current.pause().catch(err => {
+        console.error("Pause failed:", err);
+      });
+    } else {
+      console.warn("Scanner does not support pause or ref is not set.");
+    }
   };
 
   return (
@@ -61,7 +72,7 @@ const App = () => {
       <section className="App-section">
         <div className="App-section-title">SoftInvites Check-in</div>
         <Html5QrcodePlugin
-          ref={scannerRef}
+          scannerRef={scannerRef} // pass correctly named prop
           fps={10}
           qrbox={250}
           disableFlip={false}
