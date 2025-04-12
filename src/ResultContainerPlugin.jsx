@@ -316,7 +316,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${tokenToUse}`,
           },
-          body: JSON.stringify({ qrData }),
+          body: JSON.stringify({ guestId }),
         });
   
         const data = await response.json();
