@@ -10,8 +10,8 @@ const App = () => {
   const scannerRef = useRef();
 
   const onNewScanResult = (decodedText, decodedResult) => {
+    if (!decodedText) return;
     console.log("App [result]", decodedResult);
-    // Save the result in an array format with required structure
     setDecodedResults([{ decodedText, result: decodedResult }]);
   };
 
@@ -20,18 +20,16 @@ const App = () => {
       <section className="App-section">
         <div className="App-section-title">SoftInvites Check-in</div>
         <br /><br /><br />
-        
         <Html5QrcodePlugin
-          scannerRef={scannerRef}  // ✅ Pass scannerRef via props
+          ref={scannerRef}
           fps={10}
           qrbox={250}
           disableFlip={false}
           qrCodeSuccessCallback={onNewScanResult}
         />
-
         <ResultContainerPlugin
           results={decodedResults}
-          scannerRef={scannerRef}  // ✅ Send scannerRef for restarts
+          scannerRef={scannerRef}
         />
       </section>
     </div>

@@ -49,7 +49,11 @@ const ResultContainerTable = ({ data }) => {
             <TableRow key={i}>
               <TableCell>{i + 1}</TableCell>
               <TableCell sx={{ whiteSpace: 'pre-line' }}>{result.decodedText}</TableCell>
-              <TableCell>{result.result.format.formatName}</TableCell>
+              <TableCell>
+              {result && result.result && result.result.format
+                ? result.result.format.formatName
+                : "N/A"}
+            </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -183,13 +187,11 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           </Box>
         )}
 
-        <Snackbar open={showSuccess} autoHideDuration={2000}>
-          <Alert severity="success" sx={{ width: '100%' }}>
-            {guestDetails 
-              ? `Guest successfully checked in: ${guestDetails.firstName} ${guestDetails.lastName} to ${guestDetails.eventName} on ${guestDetails.eventDate} at ${guestDetails.eventLocation}`
-              : "Guest successfully checked in"}
-          </Alert>
-        </Snackbar>
+<Snackbar open={showSuccess} autoHideDuration={2000}>
+  <Alert severity="success" sx={{ width: '100%' }}>
+    Guest successfully checked in
+  </Alert>
+</Snackbar>
       </Box>
     </>
   );
