@@ -75,8 +75,6 @@
 //   });
   
 //   export default Html5QrcodePlugin;
-
-
 import React, { 
     useEffect, 
     useRef, 
@@ -86,11 +84,12 @@ import React, {
     useState
   } from 'react';
   import { Html5QrcodeScanner } from 'html5-qrcode';
-  import { Box, Paper, Typography, CircularProgress } from '@mui/material';
+  import { Box, Paper, Typography, CircularProgress, Button } from '@mui/material';
   
   const qrcodeRegionId = "html5qr-code-full-region";
   
   const Html5QrcodePlugin = forwardRef((props, ref) => {
+    const { verbose, qrCodeSuccessCallback, qrCodeErrorCallback } = props;
     const scannerRef = useRef(null);
     const isMounted = useRef(false);
     const [isScannerReady, setIsScannerReady] = useState(false);
@@ -126,15 +125,15 @@ import React, {
         const html5QrcodeScanner = new Html5QrcodeScanner(
           qrcodeRegionId, 
           config, 
-          props.verbose || false
+          verbose || false
         );
   
         await html5QrcodeScanner.render(
-          props.qrCodeSuccessCallback,
+          qrCodeSuccessCallback,
           (error) => {
             console.error("Scanner error:", error);
             setCameraError(error || "Failed to access camera");
-            props.qrCodeErrorCallback?.(error);
+            qrCodeErrorCallback?.(error);
           }
         );
   
@@ -146,7 +145,7 @@ import React, {
       } finally {
         setIsLoading(false);
       }
-    }, [props.qrCodeErrorCallback, props.qrCodeSuccessCallback, props.verbose]);
+    }, [verbose, qrCodeErrorCallback, qrCodeSuccessCallback]);
   
     useEffect(() => {
       isMounted.current = true;

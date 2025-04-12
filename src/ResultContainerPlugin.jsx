@@ -270,7 +270,6 @@ import {
   Snackbar,
   Alert,
   Button,
-  Typography
 } from '@mui/material';
 
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
@@ -342,7 +341,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         scannerRef.current?.restartScanner().catch(console.error);
       }, 1500);
     }
-  }, []);
+  }, [scannerRef]);
 
   useEffect(() => {
     if (!propsResults || propsResults.length === 0 || isProcessing.current) return;
