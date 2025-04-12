@@ -117,16 +117,16 @@
 //         const tokenFromStorage = localStorage.getItem("token");
 //         const tokenToUse = tokenFromUrl || tokenFromStorage;
   
-        // const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${tokenToUse}`,
-        //   },
-        //   body: JSON.stringify({ qrData }),
-        // });
+//         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
+//           method: 'POST',
+//           headers: {
+//             'Content-Type': 'application/json',
+//             'Authorization': `Bearer ${tokenToUse}`,
+//           },
+//           body: JSON.stringify({ qrData }),
+//         });
   
-        // const data = await response.json();
+//         const data = await response.json();
   
 //         // Early return for known errors
 //         if (response.status === 404) {
@@ -218,6 +218,11 @@
 // };
 
 // export default ResultContainerPlugin;
+
+
+
+
+
 import React, { useEffect, useState } from 'react';
 import {
   Box,
@@ -242,8 +247,8 @@ const defaultResults = [
 ];
 
 function filterResults(results) {
-  let filteredResults = [];
-  for (let i = 0; i < results.length; ++i) {
+  const filteredResults = [];
+  for (let i = 0; i < results.length; i++) {
     if (i === 0 || results[i].decodedText !== results[i - 1].decodedText) {
       filteredResults.push(results[i]);
     }
@@ -281,18 +286,20 @@ const ResultContainerTable = ({ data }) => {
 const ResultContainerPlugin = ({ results: propsResults }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [guestDetails, setGuestDetails] = useState(null);
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
   );
 
+  // Redirect the user after a short delay
   const redirectAfterDelay = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get("token");
     const redirectUrl = tokenFromUrl
       ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
       : `https://www.softinvite.com/blog`;
-  
+    
     setTimeout(() => {
       window.location.href = redirectUrl;
     }, 3000); 
@@ -301,57 +308,86 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
       if (results.length === 0) return;
-  
-      let guestId = results[0].decodedText.trim();
-  
+
+      // Use the raw QR data string (trimmed) as guest ID
+      const qrData = results[0].decodedText.trim();
+
+      // Skip if testing QR code
+      if (qrData === "Test QR Code 1") {
+        console.log("Skipping test QR code.");
+        return;
+      }
+
+      // Check for empty QR code value before sending
+      if (!qrData) {
+        setErrorMessage("QR code data is empty");
+        redirectAfterDelay();
+        return;
+      }
+
       try {
+        // Determine the token to use (from URL or local storage)
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
         const tokenToUse = tokenFromUrl || tokenFromStorage;
-  
+
         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${tokenToUse}`,
           },
-          body: JSON.stringify({ guestId }),
+          body: JSON.stringify({ qrData }),
         });
-  
+
         const data = await response.json();
-  
-        // Early return for known errors
+
+        // Handle 404 errors (Guest or Event not found)
         if (response.status === 404) {
-          setErrorMessage("Guest not found.");
+          setErrorMessage(
+            data.message.includes("Event not found")
+              ? "Event not found."
+              : "Guest not found."
+          );
           redirectAfterDelay();
           return;
         }
-  
+
+        // Check if guest has already been checked in
         if (data.message?.includes("already checked in")) {
-          setErrorMessage(`This access code has already been used.`);
+          // Optionally, include returned guest info if available
+          const guest = data.guest;
+          if (guest) {
+            setErrorMessage(`This access code has already been used by ${guest.firstName} ${guest.lastName}.`);
+          } else {
+            setErrorMessage(`This access code has already been used.`);
+          }
           redirectAfterDelay();
           return;
         }
-  
+
+        // Successful check-in
         if (response.ok) {
+          // Save guest details from successful response
+          setGuestDetails(data.guest);
           setShowSuccess(true);
           setTimeout(() => {
             redirectAfterDelay();
           }, 2000);
         } else {
-          // Catch all unexpected errors
+          // Catch-all for unexpected errors
           setErrorMessage(data.message || "Unexpected server response.");
           redirectAfterDelay();
         }
-  
+
       } catch (error) {
-        console.error("🚨 Error:", error);
+        console.error("🚨 Error during check-in:", error);
         setErrorMessage("Server error during check-in.");
-        // redirectAfterDelay();
+        redirectAfterDelay();
       }
     };
-  
+
     sendResultsToBackend(results);
   }, [results]);
 
@@ -397,7 +433,9 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
         <Snackbar open={showSuccess} autoHideDuration={2000}>
           <Alert severity="success" sx={{ width: '100%' }}>
-            Guest successfully checked in
+            {guestDetails 
+              ? `Guest successfully checked in: ${guestDetails.firstName} ${guestDetails.lastName} to ${guestDetails.eventName} on ${guestDetails.eventDate} at ${guestDetails.eventLocation}`
+              : "Guest successfully checked in"}
           </Alert>
         </Snackbar>
       </Box>
@@ -406,3 +444,198 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 };
 
 export default ResultContainerPlugin;
+
+
+
+
+
+
+
+// import React, { useEffect, useState } from 'react';
+// import {
+//   Box,
+//   Typography,
+//   Paper,
+//   Table,
+//   TableBody,
+//   TableCell,
+//   TableContainer,
+//   TableHead,
+//   TableRow,
+//   CircularProgress,
+//   Snackbar,
+//   Alert,
+// } from '@mui/material';
+
+// const defaultResults = [
+//   {
+//     decodedText: "Test QR Code 1",
+//     result: { format: { formatName: "QR Code" } }
+//   }
+// ];
+
+// function filterResults(results) {
+//   let filteredResults = [];
+//   for (let i = 0; i < results.length; ++i) {
+//     if (i === 0 || results[i].decodedText !== results[i - 1].decodedText) {
+//       filteredResults.push(results[i]);
+//     }
+//   }
+//   return filteredResults;
+// }
+
+// const ResultContainerTable = ({ data }) => {
+//   const results = filterResults(data);
+
+//   return (
+//     <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3 }}>
+//       <Table>
+//         <TableHead sx={{ backgroundColor: '#1976d2' }}>
+//           <TableRow>
+//             <TableCell sx={{ color: '#fff' }}>#</TableCell>
+//             <TableCell sx={{ color: '#fff' }}>Decoded Text</TableCell>
+//             <TableCell sx={{ color: '#fff' }}>Format</TableCell>
+//           </TableRow>
+//         </TableHead>
+//         <TableBody>
+//           {results.map((result, i) => (
+//             <TableRow key={i}>
+//               <TableCell>{i + 1}</TableCell>
+//               <TableCell sx={{ whiteSpace: 'pre-line' }}>{result.decodedText}</TableCell>
+//               <TableCell>{result.result.format.formatName}</TableCell>
+//             </TableRow>
+//           ))}
+//         </TableBody>
+//       </Table>
+//     </TableContainer>
+//   );
+// };
+
+// const ResultContainerPlugin = ({ results: propsResults }) => {
+//   const [showSuccess, setShowSuccess] = useState(false);
+//   const [errorMessage, setErrorMessage] = useState("");
+
+//   const results = filterResults(
+//     propsResults && propsResults.length > 0 ? propsResults : defaultResults
+//   );
+
+//   const redirectAfterDelay = () => {
+//     const urlParams = new URLSearchParams(window.location.search);
+//     const tokenFromUrl = urlParams.get("token");
+//     const redirectUrl = tokenFromUrl
+//       ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
+//       : `https://www.softinvite.com/blog`;
+  
+//     setTimeout(() => {
+//       window.location.href = redirectUrl;
+//     }, 3000); 
+//   };
+
+//   useEffect(() => {
+//     const sendResultsToBackend = async (results) => {
+//       if (results.length === 0) return;
+  
+//       let qrData = results[0].decodedText.trim();
+  
+//       try {
+//         const urlParams = new URLSearchParams(window.location.search);
+//         const tokenFromUrl = urlParams.get("token");
+//         const tokenFromStorage = localStorage.getItem("token");
+//         const tokenToUse = tokenFromUrl || tokenFromStorage;
+  
+//         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
+//           method: 'POST',
+//           headers: {
+//             'Content-Type': 'application/json',
+//             'Authorization': `Bearer ${tokenToUse}`,
+//           },
+//           body: JSON.stringify({ qrData }),
+//         });
+  
+//         const data = await response.json();
+  
+//         // Early return for known errors
+//         if (response.status === 404) {
+//           setErrorMessage("Guest not found.");
+//           redirectAfterDelay();
+//           return;
+//         }
+  
+//         if (data.message?.includes("already checked in")) {
+//           setErrorMessage(`This access code has already been used.`);
+//           redirectAfterDelay();
+//           return;
+//         }
+  
+//         if (response.ok) {
+//           setShowSuccess(true);
+//           setTimeout(() => {
+//             redirectAfterDelay();
+//           }, 2000);
+//         } else {
+//           // Catch all unexpected errors
+//           setErrorMessage(data.message || "Unexpected server response.");
+//           redirectAfterDelay();
+//         }
+  
+//       } catch (error) {
+//         console.error("🚨 Error:", error);
+//         setErrorMessage("Server error during check-in.");
+//         // redirectAfterDelay();
+//       }
+//     };
+  
+//     sendResultsToBackend(results);
+//   }, [results]);
+
+//   return (
+//     <>
+//       {/* Error Message Toast */}
+//       <Snackbar
+//         open={Boolean(errorMessage)}
+//         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+//         autoHideDuration={7000}
+//         onClose={() => setErrorMessage("")}
+//         sx={{
+//           zIndex: 1500,
+//           mt: 4,
+//           '& .MuiAlert-root': {
+//             fontSize: '1.2rem',
+//             fontWeight: 'bold',
+//             backgroundColor: '#d32f2f',
+//             color: '#fff',
+//             padding: '20px 30px',
+//             borderRadius: '12px',
+//             boxShadow: 6,
+//           }
+//         }}
+//       >
+//         <Alert severity="error" variant="filled">
+//           {errorMessage}
+//         </Alert>
+//       </Snackbar>
+
+//       <Box sx={{ padding: 4 }}>
+//         <Typography variant="h5" fontWeight="bold" gutterBottom>
+//           Scanned Results ({results.length})
+//         </Typography>
+
+//         {results.length > 0 ? (
+//           <ResultContainerTable data={results} />
+//         ) : (
+//           <Box display="flex" justifyContent="center" mt={4}>
+//             <CircularProgress />
+//           </Box>
+//         )}
+
+//         <Snackbar open={showSuccess} autoHideDuration={2000}>
+//           <Alert severity="success" sx={{ width: '100%' }}>
+//             Guest successfully checked in
+//           </Alert>
+//         </Snackbar>
+//       </Box>
+//     </>
+//   );
+// };
+
+// export default ResultContainerPlugin;
