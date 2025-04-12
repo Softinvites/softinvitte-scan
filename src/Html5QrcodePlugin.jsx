@@ -123,31 +123,30 @@
 //   export default Html5QrcodePlugin;
 
 
-
 import React, { 
     useEffect, 
     useRef, 
     useImperativeHandle, 
-    forwardRef,
-    useState // Make sure this import is present
+    forwardRef 
   } from 'react';
   import { Html5QrcodeScanner } from 'html5-qrcode';
-  import { Box, Paper, Typography, CircularProgress } from '@mui/material';
+  import { Box, Paper, Typography } from '@mui/material';
   
   const qrcodeRegionId = "html5qr-code-full-region";
   
   const Html5QrcodePlugin = forwardRef((props, ref) => {
-    const [loading, setLoading] = useState(true); // Now useState is defined
     const scannerRef = useRef(null);
   
     useEffect(() => {
       const config = {
-        fps: 10,
+        fps: 15, // Increased for better performance
         qrbox: 250,
         disableFlip: false,
         videoConstraints: {
           facingMode: "environment",
-          focusMode: "continuous"
+          focusMode: "continuous",
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 }
         }
       };
   
@@ -158,10 +157,7 @@ import React, {
       );
   
       html5QrcodeScanner.render(
-        (decodedText, result) => {
-          setLoading(false);
-          props.qrCodeSuccessCallback(decodedText, result);
-        },
+        props.qrCodeSuccessCallback,
         props.qrCodeErrorCallback
       );
   
@@ -176,37 +172,29 @@ import React, {
   
     useImperativeHandle(ref, () => ({
       restartScanner: () => {
-        setLoading(true);
         scannerRef.current?.clear().then(() => {
           scannerRef.current?.render(
             props.qrCodeSuccessCallback,
             props.qrCodeErrorCallback
           );
         });
-      }
+      },
+      pauseScanner: () => scannerRef.current?.pause(),
+      resumeScanner: () => scannerRef.current?.resume()
     }));
   
     return (
-      <Paper elevation={4} sx={{ p: 3, mt: 4, position: 'relative' }}>
+      <Paper elevation={4} sx={{ 
+        p: 3, 
+        mt: 4,
+        '& video': {
+          filter: 'contrast(1.2) brightness(1.1)' // Enhanced for better scanning
+        }
+      }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           Scan QR Code
         </Typography>
         <Box id={qrcodeRegionId} sx={{ width: '100%', height: 300 }} />
-        {loading && (
-          <Box
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            sx={{ backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10 }}
-          >
-            <CircularProgress />
-          </Box>
-        )}
       </Paper>
     );
   });
