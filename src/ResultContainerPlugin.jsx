@@ -117,16 +117,16 @@
 //         const tokenFromStorage = localStorage.getItem("token");
 //         const tokenToUse = tokenFromUrl || tokenFromStorage;
   
-//         const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             'Authorization': `Bearer ${tokenToUse}`,
-//           },
-//           body: JSON.stringify({ qrData }),
-//         });
+        // const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //     'Authorization': `Bearer ${tokenToUse}`,
+        //   },
+        //   body: JSON.stringify({ qrData }),
+        // });
   
-//         const data = await response.json();
+        // const data = await response.json();
   
 //         // Early return for known errors
 //         if (response.status === 404) {
@@ -304,23 +304,19 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
   
       let guestId = results[0].decodedText.trim();
   
-      if (guestId === "Test QR Code 1") {
-        console.log("Skipping test QR code.");
-        return;
-      }
-  
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
         const tokenToUse = tokenFromUrl || tokenFromStorage;
   
-        const response = await fetch('https://software-invite-api-self.vercel.app/guest/' + guestId, {
-          method: 'GET',
+        const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${tokenToUse}`,
           },
+          body: JSON.stringify({ qrData }),
         });
   
         const data = await response.json();
