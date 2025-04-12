@@ -19,8 +19,8 @@ import React, {
   const qrcodeRegionId = 'html5qr-code-full-region';
   
   const createConfig = () => ({
-    fps: 15,
-    qrbox: 300,
+    fps: 10,
+    qrbox: 250,
     aspectRatio: 1.0,
     disableFlip: true,
     supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
@@ -28,7 +28,7 @@ import React, {
       useBarCodeDetectorIfSupported: true,
     },
     videoConstraints: {
-      facingMode: { ideal: 'environment' },
+      facingMode: 'environment',
       width: { ideal: 640 },
       height: { ideal: 480 },
     },
@@ -36,55 +36,60 @@ import React, {
   
   const Html5QrcodePlugin = forwardRef((props, ref) => {
     const [loading, setLoading] = useState(true);
+    const scannerInitialized = useRef(false);
     const scannerRef = useRef(null);
-  
     const { qrCodeSuccessCallback, qrCodeErrorCallback, verbose } = props;
   
     useEffect(() => {
-      const config = createConfig();
-      const verboseOption = verbose === true;
+      const timeoutId = setTimeout(() => {
+        if (!scannerInitialized.current) {
+          const config = createConfig();
+          const verboseOption = verbose === true;
   
-      if (!qrCodeSuccessCallback) {
-        throw new Error('qrCodeSuccessCallback is a required callback.');
-      }
+          scannerRef.current = new Html5QrcodeScanner(qrcodeRegionId, config, verboseOption);
   
-      scannerRef.current = new Html5QrcodeScanner(qrcodeRegionId, config, verboseOption);
+          scannerRef.current.render(
+            (decodedText, result) => {
+              setLoading(false);
+              qrCodeSuccessCallback(decodedText, result);
+            },
+            qrCodeErrorCallback
+          );
   
-      setLoading(true);
-  
-      scannerRef.current.render(
-        (decodedText, result) => {
-          setLoading(false);
-          qrCodeSuccessCallback(decodedText, result);
-        },
-        qrCodeErrorCallback
-      );
+          scannerInitialized.current = true;
+        }
+      }, 300); // Short delay to ensure DOM is ready
   
       return () => {
-        scannerRef.current
-          .clear()
-          .catch((err) => console.error('Clear failed', err));
+        clearTimeout(timeoutId);
+        if (scannerInitialized.current) {
+          scannerRef.current
+            .clear()
+            .catch((err) => console.error('Clear failed', err));
+        }
       };
     }, [qrCodeSuccessCallback, qrCodeErrorCallback, verbose]);
   
     useImperativeHandle(ref, () => ({
       restartScanner: () => {
         setLoading(true);
-        scannerRef.current
-          ?.clear()
-          .then(() => {
-            scannerRef.current.render(
-              (decodedText, result) => {
-                setLoading(false);
-                qrCodeSuccessCallback(decodedText, result);
-              },
-              qrCodeErrorCallback
-            );
-          })
-          .catch((err) => {
-            console.error('Error restarting scanner:', err);
-            setLoading(false);
-          });
+        if (scannerInitialized.current && scannerRef.current) {
+          scannerRef.current
+            .clear()
+            .then(() => {
+              scannerRef.current.render(
+                (decodedText, result) => {
+                  setLoading(false);
+                  qrCodeSuccessCallback(decodedText, result);
+                },
+                qrCodeErrorCallback
+              );
+            })
+            .catch((err) => {
+              console.error('Restart failed', err);
+              setLoading(false);
+            });
+        }
       },
     }));
   
@@ -94,16 +99,8 @@ import React, {
           Scan QR Code
         </Typography>
   
-        {/* Always render the target element */}
-        <Box
-          id={qrcodeRegionId}
-          sx={{
-            width: '100%',
-            height: 300,
-          }}
-        />
+        <Box id={qrcodeRegionId} sx={{ width: '100%', height: 300 }} />
   
-        {/* Overlay loading spinner */}
         {loading && (
           <Box
             position="absolute"
@@ -114,7 +111,7 @@ import React, {
             display="flex"
             justifyContent="center"
             alignItems="center"
-            sx={{ backgroundColor: 'rgba(255, 255, 255, 0.7)', zIndex: 10 }}
+            sx={{ backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 10 }}
           >
             <CircularProgress />
           </Box>

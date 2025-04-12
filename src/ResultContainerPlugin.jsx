@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -9,16 +9,15 @@ import {
 
 // Example filterResults function
 const filterResults = (results) => {
-  return results.filter((result) => result.status === 'valid'); // Modify as needed
+  return results.filter((result) => result.status === 'valid'); // Customize if needed
 };
 
-// Default results if propsResults is empty
 const defaultResults = [
   { id: 1, decodedText: 'Default QR Code', status: 'valid' },
   { id: 2, decodedText: 'Another Default QR', status: 'valid' },
 ];
 
-// Define a simple table for the results
+// Table to show scanned results
 const ResultContainerTable = ({ data }) => (
   <table>
     <thead>
@@ -41,15 +40,15 @@ const ResultContainerTable = ({ data }) => (
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const lastProcessedCode = useRef(""); // Prevent infinite calls
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
   );
 
-  // Use `useCallback` to memoize the restartScannerAfterDelay function
   const restartScannerAfterDelay = useCallback(() => {
     setTimeout(() => {
-      scannerRef?.current?.restartScanner();
+      scannerRef?.current?.restartScanner?.();
     }, 3000);
   }, [scannerRef]);
 
@@ -58,11 +57,11 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       if (results.length === 0) return;
 
       const qrData = results[0].decodedText.trim();
-      if (!qrData) {
-        setErrorMessage("QR code data is empty");
-        restartScannerAfterDelay();
-        return;
+      if (!qrData || qrData === lastProcessedCode.current) {
+        return; // Prevent reprocessing same QR
       }
+
+      lastProcessedCode.current = qrData;
 
       try {
         const urlParams = new URLSearchParams(window.location.search);
@@ -74,7 +73,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${tokenToUse}`,
+            Authorization: `Bearer ${tokenToUse}`,
           },
           body: JSON.stringify({ qrData }),
         });
@@ -93,11 +92,8 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
 
         if (data.message?.includes("already checked in")) {
           const guest = data.guest;
-          if (guest) {
-            setErrorMessage(`This access code has already been used by ${guest.firstName} ${guest.lastName}.`);
-          } else {
-            setErrorMessage(`This access code has already been used.`);
-          }
+          const name = guest ? `${guest.firstName} ${guest.lastName}` : '';
+          setErrorMessage(`This access code has already been used${name ? ` by ${name}` : ''}.`);
           restartScannerAfterDelay();
           return;
         }
@@ -105,14 +101,13 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         if (response.ok) {
           setShowSuccess(true);
           setTimeout(() => {
-            setShowSuccess(false); 
+            setShowSuccess(false);
             restartScannerAfterDelay();
           }, 2000);
         } else {
           setErrorMessage(data.message || "Unexpected server response.");
           restartScannerAfterDelay();
         }
-
       } catch (error) {
         console.error("🚨 Error during check-in:", error);
         setErrorMessage("Server error during check-in.");
@@ -141,7 +136,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
             padding: '20px 30px',
             borderRadius: '12px',
             boxShadow: 6,
-          }
+          },
         }}
       >
         <Alert severity="error" variant="filled">
