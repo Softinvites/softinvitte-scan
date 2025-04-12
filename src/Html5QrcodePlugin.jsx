@@ -1,5 +1,6 @@
 import React, {
     useEffect,
+    useRef,
     useState,
     useImperativeHandle,
     forwardRef,
@@ -35,47 +36,49 @@ import React, {
   
   const Html5QrcodePlugin = forwardRef((props, ref) => {
     const [loading, setLoading] = useState(true);
-    let scanner;
+    const scannerRef = useRef(null);
+  
+    const { qrCodeSuccessCallback, qrCodeErrorCallback, verbose } = props;
   
     useEffect(() => {
       const config = createConfig();
-      const verbose = props.verbose === true;
+      const verboseOption = verbose === true;
   
-      if (!props.qrCodeSuccessCallback) {
-        throw new Error('qrCodeSuccessCallback is required callback.');
+      if (!qrCodeSuccessCallback) {
+        throw new Error('qrCodeSuccessCallback is a required callback.');
       }
   
-      scanner = new Html5QrcodeScanner(qrcodeRegionId, config, verbose);
+      scannerRef.current = new Html5QrcodeScanner(qrcodeRegionId, config, verboseOption);
   
-      setLoading(true); // Show loading spinner
+      setLoading(true);
   
-      scanner.render(
+      scannerRef.current.render(
         (decodedText, result) => {
-          setLoading(false); // Hide spinner on first successful scan
-          props.qrCodeSuccessCallback(decodedText, result);
+          setLoading(false);
+          qrCodeSuccessCallback(decodedText, result);
         },
-        props.qrCodeErrorCallback
+        qrCodeErrorCallback
       );
   
       return () => {
-        scanner
+        scannerRef.current
           .clear()
           .catch((err) => console.error('Clear failed', err));
       };
-    }, []);
+    }, [qrCodeSuccessCallback, qrCodeErrorCallback, verbose]);
   
     useImperativeHandle(ref, () => ({
       restartScanner: () => {
         setLoading(true);
-        scanner
+        scannerRef.current
           ?.clear()
           .then(() => {
-            scanner.render(
+            scannerRef.current.render(
               (decodedText, result) => {
                 setLoading(false);
-                props.qrCodeSuccessCallback(decodedText, result);
+                qrCodeSuccessCallback(decodedText, result);
               },
-              props.qrCodeErrorCallback
+              qrCodeErrorCallback
             );
           })
           .catch((err) => {
@@ -86,22 +89,35 @@ import React, {
     }));
   
     return (
-      <Paper elevation={4} sx={{ p: 3, mt: 4 }}>
+      <Paper elevation={4} sx={{ p: 3, mt: 4, position: 'relative' }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           Scan QR Code
         </Typography>
   
-        {loading ? (
+        {/* Always render the target element */}
+        <Box
+          id={qrcodeRegionId}
+          sx={{
+            width: '100%',
+            height: 300,
+          }}
+        />
+  
+        {/* Overlay loading spinner */}
+        {loading && (
           <Box
+            position="absolute"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
             display="flex"
             justifyContent="center"
             alignItems="center"
-            height={300}
+            sx={{ backgroundColor: 'rgba(255, 255, 255, 0.7)', zIndex: 10 }}
           >
             <CircularProgress />
           </Box>
-        ) : (
-          <Box id={qrcodeRegionId} />
         )}
       </Paper>
     );

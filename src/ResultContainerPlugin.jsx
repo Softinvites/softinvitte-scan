@@ -1,82 +1,57 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   CircularProgress,
   Snackbar,
   Alert,
 } from '@mui/material';
 
-const defaultResults = [
-  {
-    decodedText: "Test QR Code 1",
-    result: { format: { formatName: "QR Code" } }
-  }
-];
-
-function filterResults(results) {
-  const filteredResults = [];
-  for (let i = 0; i < results.length; i++) {
-    if (i === 0 || results[i].decodedText !== results[i - 1].decodedText) {
-      filteredResults.push(results[i]);
-    }
-  }
-  return filteredResults;
-}
-
-const ResultContainerTable = ({ data }) => {
-  const results = filterResults(data);
-
-  return (
-    <TableContainer component={Paper} sx={{ mt: 2, boxShadow: 3 }}>
-      <Table>
-        <TableHead sx={{ backgroundColor: '#1976d2' }}>
-          <TableRow>
-            <TableCell sx={{ color: '#fff' }}>#</TableCell>
-            <TableCell sx={{ color: '#fff' }}>Decoded Text</TableCell>
-            <TableCell sx={{ color: '#fff' }}>Format</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {results.map((result, i) => (
-            <TableRow key={i}>
-              <TableCell>{i + 1}</TableCell>
-              <TableCell sx={{ whiteSpace: 'pre-line' }}>{result.decodedText}</TableCell>
-              <TableCell>
-              {result && result.result && result.result.format
-                ? result.result.format.formatName
-                : "N/A"}
-            </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+// Example filterResults function
+const filterResults = (results) => {
+  return results.filter((result) => result.status === 'valid'); // Modify as needed
 };
 
-// ✅ scannerRef now accepted here
+// Default results if propsResults is empty
+const defaultResults = [
+  { id: 1, decodedText: 'Default QR Code', status: 'valid' },
+  { id: 2, decodedText: 'Another Default QR', status: 'valid' },
+];
+
+// Define a simple table for the results
+const ResultContainerTable = ({ data }) => (
+  <table>
+    <thead>
+      <tr>
+        <th>QR Code Data</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {data.map((item) => (
+        <tr key={item.id}>
+          <td>{item.decodedText}</td>
+          <td>{item.status}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [guestDetails, setGuestDetails] = useState(null);
 
   const results = filterResults(
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
   );
 
-  const restartScannerAfterDelay = () => {
+  // Use `useCallback` to memoize the restartScannerAfterDelay function
+  const restartScannerAfterDelay = useCallback(() => {
     setTimeout(() => {
       scannerRef?.current?.restartScanner();
     }, 3000);
-  };
+  }, [scannerRef]);
 
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
@@ -128,13 +103,12 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         }
 
         if (response.ok) {
-          setGuestDetails(data.guest);
           setShowSuccess(true);
           setTimeout(() => {
             setShowSuccess(false); 
             restartScannerAfterDelay();
           }, 2000);
-        }else {
+        } else {
           setErrorMessage(data.message || "Unexpected server response.");
           restartScannerAfterDelay();
         }
@@ -147,7 +121,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
     };
 
     sendResultsToBackend(results);
-  }, [results]);
+  }, [results, restartScannerAfterDelay]);
 
   return (
     <>
@@ -188,15 +162,15 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           </Box>
         )}
 
-<Snackbar
-  open={showSuccess}
-  autoHideDuration={2000}
-  onClose={() => setShowSuccess(false)}
->
-  <Alert severity="success" sx={{ width: '100%' }}>
-    Guest successfully checked in
-  </Alert>
-</Snackbar>
+        <Snackbar
+          open={showSuccess}
+          autoHideDuration={2000}
+          onClose={() => setShowSuccess(false)}
+        >
+          <Alert severity="success" sx={{ width: '100%' }}>
+            Guest successfully checked in
+          </Alert>
+        </Snackbar>
       </Box>
     </>
   );
