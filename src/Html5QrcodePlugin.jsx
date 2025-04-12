@@ -77,12 +77,14 @@
 //   export default Html5QrcodePlugin;
 
 
+
 import React, { 
     useEffect, 
     useRef, 
     useImperativeHandle, 
     forwardRef,
-    useCallback
+    useCallback,
+    useState
   } from 'react';
   import { Html5QrcodeScanner } from 'html5-qrcode';
   import { Box, Paper, Typography } from '@mui/material';
@@ -92,9 +94,19 @@ import React, {
   const Html5QrcodePlugin = forwardRef((props, ref) => {
     const scannerRef = useRef(null);
     const isMounted = useRef(false);
+    const [isScannerReady, setIsScannerReady] = useState(false);
   
     const startScanner = useCallback(() => {
-      if (!isMounted.current) return;
+      if (!isMounted.current || !document.getElementById(qrcodeRegionId)) {
+        return;
+      }
+  
+      // Clear any existing scanner first
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(error => {
+          console.error("Failed to clear previous scanner: ", error);
+        });
+      }
   
       const config = {
         fps: 15,
@@ -122,28 +134,51 @@ import React, {
       );
   
       scannerRef.current = html5QrcodeScanner;
+      setIsScannerReady(true);
     }, [props.qrCodeErrorCallback, props.qrCodeSuccessCallback, props.verbose]);
   
     useEffect(() => {
       isMounted.current = true;
-      startScanner();
+      
+      // Wait briefly to ensure DOM is ready
+      const timer = setTimeout(() => {
+        if (isMounted.current) {
+          startScanner();
+        }
+      }, 100);
   
       return () => {
         isMounted.current = false;
-        scannerRef.current?.clear().catch(error => {
-          console.error("Failed to clear scanner: ", error);
-        });
+        clearTimeout(timer);
+        if (scannerRef.current) {
+          scannerRef.current.clear().catch(error => {
+            console.error("Failed to clear scanner: ", error);
+          });
+        }
       };
     }, [startScanner]);
   
     useImperativeHandle(ref, () => ({
       restartScanner: () => {
-        scannerRef.current?.clear().then(() => {
-          startScanner();
-        });
+        if (scannerRef.current) {
+          scannerRef.current.clear().then(() => {
+            startScanner();
+          }).catch(error => {
+            console.error("Failed to restart scanner: ", error);
+          });
+        }
       },
-      pauseScanner: () => scannerRef.current?.pause(),
-      resumeScanner: () => scannerRef.current?.resume()
+      pauseScanner: () => {
+        if (scannerRef.current) {
+          scannerRef.current.pause();
+        }
+      },
+      resumeScanner: () => {
+        if (scannerRef.current) {
+          scannerRef.current.resume();
+        }
+      },
+      isReady: () => isScannerReady
     }));
   
     return (
