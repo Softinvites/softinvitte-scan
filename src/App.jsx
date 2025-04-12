@@ -26,6 +26,9 @@ const App = () => {
           qrbox={250}
           disableFlip={false}
           qrCodeSuccessCallback={onNewScanResult}
+          qrCodeErrorCallback={(errorMessage) => {
+            console.warn("Camera error:", errorMessage);
+          }}
         />
         <ResultContainerPlugin
           results={decodedResults}

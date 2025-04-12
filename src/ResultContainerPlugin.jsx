@@ -131,9 +131,10 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           setGuestDetails(data.guest);
           setShowSuccess(true);
           setTimeout(() => {
+            setShowSuccess(false); 
             restartScannerAfterDelay();
           }, 2000);
-        } else {
+        }else {
           setErrorMessage(data.message || "Unexpected server response.");
           restartScannerAfterDelay();
         }
@@ -187,7 +188,11 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           </Box>
         )}
 
-<Snackbar open={showSuccess} autoHideDuration={2000}>
+<Snackbar
+  open={showSuccess}
+  autoHideDuration={2000}
+  onClose={() => setShowSuccess(false)}
+>
   <Alert severity="success" sx={{ width: '100%' }}>
     Guest successfully checked in
   </Alert>
