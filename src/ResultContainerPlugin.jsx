@@ -352,7 +352,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
       } catch (error) {
         console.error("🚨 Error:", error);
         setErrorMessage("Server error during check-in.");
-        redirectAfterDelay();
+        // redirectAfterDelay();
       }
     };
   
