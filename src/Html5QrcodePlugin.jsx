@@ -77,7 +77,6 @@
 //   export default Html5QrcodePlugin;
 
 
-
 import React, { 
     useEffect, 
     useRef, 
@@ -87,7 +86,7 @@ import React, {
     useState
   } from 'react';
   import { Html5QrcodeScanner } from 'html5-qrcode';
-  import { Box, Paper, Typography } from '@mui/material';
+  import { Box, Paper, Typography, CircularProgress } from '@mui/material';
   
   const qrcodeRegionId = "html5qr-code-full-region";
   
@@ -95,89 +94,81 @@ import React, {
     const scannerRef = useRef(null);
     const isMounted = useRef(false);
     const [isScannerReady, setIsScannerReady] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [cameraError, setCameraError] = useState(null);
   
-    const startScanner = useCallback(() => {
-      if (!isMounted.current || !document.getElementById(qrcodeRegionId)) {
-        return;
-      }
+    const startScanner = useCallback(async () => {
+      if (!isMounted.current || !document.getElementById(qrcodeRegionId)) return;
   
-      // Clear any existing scanner first
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(error => {
-          console.error("Failed to clear previous scanner: ", error);
-        });
-      }
+      try {
+        setIsLoading(true);
+        setCameraError(null);
   
-      const config = {
-        fps: 15,
-        qrbox: 250,
-        disableFlip: false,
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [Html5QrcodeScanner.SCAN_TYPE_CAMERA],
-        videoConstraints: {
-          facingMode: "environment",
-          focusMode: "continuous",
-          width: { min: 640, ideal: 1280, max: 1920 },
-          height: { min: 480, ideal: 720, max: 1080 }
+        // Clear any existing scanner
+        if (scannerRef.current) {
+          await scannerRef.current.clear().catch(console.error);
         }
-      };
   
-      const html5QrcodeScanner = new Html5QrcodeScanner(
-        qrcodeRegionId, 
-        config, 
-        props.verbose || false
-      );
+        const config = {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          disableFlip: false,
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [Html5QrcodeScanner.SCAN_TYPE_CAMERA],
+          videoConstraints: {
+            facingMode: "environment",
+            focusMode: "continuous",
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          }
+        };
   
-      html5QrcodeScanner.render(
-        props.qrCodeSuccessCallback,
-        props.qrCodeErrorCallback
-      );
+        const html5QrcodeScanner = new Html5QrcodeScanner(
+          qrcodeRegionId, 
+          config, 
+          props.verbose || false
+        );
   
-      scannerRef.current = html5QrcodeScanner;
-      setIsScannerReady(true);
+        await html5QrcodeScanner.render(
+          props.qrCodeSuccessCallback,
+          (error) => {
+            console.error("Scanner error:", error);
+            setCameraError(error || "Failed to access camera");
+            props.qrCodeErrorCallback?.(error);
+          }
+        );
+  
+        scannerRef.current = html5QrcodeScanner;
+        setIsScannerReady(true);
+      } catch (error) {
+        console.error("Scanner initialization error:", error);
+        setCameraError(error.message || "Failed to initialize scanner");
+      } finally {
+        setIsLoading(false);
+      }
     }, [props.qrCodeErrorCallback, props.qrCodeSuccessCallback, props.verbose]);
   
     useEffect(() => {
       isMounted.current = true;
-      
-      // Wait briefly to ensure DOM is ready
-      const timer = setTimeout(() => {
-        if (isMounted.current) {
-          startScanner();
-        }
-      }, 100);
+      startScanner();
   
       return () => {
         isMounted.current = false;
-        clearTimeout(timer);
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch(error => {
-            console.error("Failed to clear scanner: ", error);
-          });
-        }
+        scannerRef.current?.clear().catch(console.error);
       };
     }, [startScanner]);
   
     useImperativeHandle(ref, () => ({
-      restartScanner: () => {
-        if (scannerRef.current) {
-          scannerRef.current.clear().then(() => {
-            startScanner();
-          }).catch(error => {
-            console.error("Failed to restart scanner: ", error);
-          });
+      restartScanner: async () => {
+        try {
+          await scannerRef.current?.clear();
+          await startScanner();
+        } catch (error) {
+          console.error("Error restarting scanner:", error);
         }
       },
-      pauseScanner: () => {
-        if (scannerRef.current) {
-          scannerRef.current.pause();
-        }
-      },
-      resumeScanner: () => {
-        if (scannerRef.current) {
-          scannerRef.current.resume();
-        }
-      },
+      pauseScanner: () => scannerRef.current?.pause(),
+      resumeScanner: () => scannerRef.current?.resume(),
       isReady: () => isScannerReady
     }));
   
@@ -185,14 +176,53 @@ import React, {
       <Paper elevation={4} sx={{ 
         p: 3, 
         mt: 4,
-        '& video': {
-          filter: 'contrast(1.2) brightness(1.1)'
-        }
+        position: 'relative',
+        minHeight: 300,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
           Scan QR Code
         </Typography>
-        <Box id={qrcodeRegionId} sx={{ width: '100%', height: 300 }} />
+        
+        {isLoading && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <CircularProgress size={60} thickness={4} />
+            <Typography variant="body2" sx={{ mt: 2 }}>
+              Initializing scanner...
+            </Typography>
+          </Box>
+        )}
+  
+        {cameraError && (
+          <Box sx={{ textAlign: 'center', p: 2 }}>
+            <Typography color="error" sx={{ mb: 2 }}>
+              {cameraError}
+            </Typography>
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={startScanner}
+            >
+              Retry Camera
+            </Button>
+          </Box>
+        )}
+  
+        <Box 
+          id={qrcodeRegionId} 
+          sx={{ 
+            width: '100%', 
+            minHeight: 300,
+            visibility: isScannerReady && !cameraError ? 'visible' : 'hidden',
+            '& video': {
+              filter: 'contrast(1.2) brightness(1.1)',
+              borderRadius: 1
+            }
+          }} 
+        />
       </Paper>
     );
   });
