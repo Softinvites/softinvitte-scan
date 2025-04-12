@@ -58,7 +58,8 @@ const ResultContainerTable = ({ data }) => {
   );
 };
 
-const ResultContainerPlugin = ({ results: propsResults }) => {
+// ✅ scannerRef now accepted here
+const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [guestDetails, setGuestDetails] = useState(null);
@@ -67,42 +68,24 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
     propsResults && propsResults.length > 0 ? propsResults : defaultResults
   );
 
-  // Redirect the user after a short delay
-  // const redirectAfterDelay = () => {
-  //   const urlParams = new URLSearchParams(window.location.search);
-  //   const tokenFromUrl = urlParams.get("token");
-  //   const redirectUrl = tokenFromUrl
-  //     ? `https://www.softinvite.com/blog?token=${tokenFromUrl}`
-  //     : `https://www.softinvite.com/blog`;
-    
-  //   setTimeout(() => {
-  //     window.location.href = redirectUrl;
-  //   }, 3000); 
-  // };
-
   const restartScannerAfterDelay = () => {
     setTimeout(() => {
-      props.scannerRef.current?.restartScanner();
-    }, 3000); // delay before restarting
+      scannerRef?.current?.restartScanner();
+    }, 3000);
   };
-  
 
   useEffect(() => {
     const sendResultsToBackend = async (results) => {
       if (results.length === 0) return;
 
-      // Use the raw QR data string (trimmed) as guest ID
       const qrData = results[0].decodedText.trim();
-
-      // Check for empty QR code value before sending
       if (!qrData) {
         setErrorMessage("QR code data is empty");
-        redirectAfterDelay();
+        restartScannerAfterDelay();
         return;
       }
 
       try {
-        // Determine the token to use (from URL or local storage)
         const urlParams = new URLSearchParams(window.location.search);
         const tokenFromUrl = urlParams.get("token");
         const tokenFromStorage = localStorage.getItem("token");
@@ -119,7 +102,6 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
         const data = await response.json();
 
-        // Handle 404 errors (Guest or Event not found)
         if (response.status === 404) {
           setErrorMessage(
             data.message.includes("Event not found")
@@ -130,9 +112,7 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           return;
         }
 
-        // Check if guest has already been checked in
         if (data.message?.includes("already checked in")) {
-          // Optionally, include returned guest info if available
           const guest = data.guest;
           if (guest) {
             setErrorMessage(`This access code has already been used by ${guest.firstName} ${guest.lastName}.`);
@@ -143,16 +123,13 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
           return;
         }
 
-        // Successful check-in
         if (response.ok) {
-          // Save guest details from successful response
           setGuestDetails(data.guest);
           setShowSuccess(true);
           setTimeout(() => {
             restartScannerAfterDelay();
           }, 2000);
         } else {
-          // Catch-all for unexpected errors
           setErrorMessage(data.message || "Unexpected server response.");
           restartScannerAfterDelay();
         }
@@ -169,7 +146,6 @@ const ResultContainerPlugin = ({ results: propsResults }) => {
 
   return (
     <>
-      {/* Error Message Toast */}
       <Snackbar
         open={Boolean(errorMessage)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
