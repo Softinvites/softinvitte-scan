@@ -5,17 +5,12 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  Button,
 } from '@mui/material';
 
-// Filter function to clean results
 const filterResults = (results) => {
   return results.filter((result) => result.status === 'valid');
 };
-
-const defaultResults = [
-  { id: 1, decodedText: 'Default QR Code', status: 'valid' },
-  { id: 2, decodedText: 'Another Default QR', status: 'valid' },
-];
 
 const ResultContainerTable = ({ data }) => (
   <table>
@@ -38,107 +33,97 @@ const ResultContainerTable = ({ data }) => (
 
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [retryData, setRetryData] = useState(null);
+  const scannedCache = useRef(new Set());
 
-  const lastProcessedCode = useRef("");
-  const hasProcessed = useRef(false);
-
-  const results = filterResults(
-    propsResults && propsResults.length > 0 ? propsResults : defaultResults
-  );
+  const results = filterResults(propsResults || []);
 
   const restartScannerAfterDelay = useCallback(() => {
     setTimeout(() => {
-      hasProcessed.current = false;
-      lastProcessedCode.current = "";
-      scannerRef?.current?.restartScanner?.();
+      scannerRef?.current?.restartScanner();
+      setIsLoading(true);
     }, 3000);
   }, [scannerRef]);
 
-  useEffect(() => {
-    const sendResultsToBackend = async (results) => {
-      if (results.length === 0 || hasProcessed.current) return;
-
-      const qrData = results[0].decodedText.trim();
-      if (!qrData || qrData === lastProcessedCode.current) return;
-
-      lastProcessedCode.current = qrData;
-      hasProcessed.current = true;
-      setLoading(true);
-
+  const handleCheckIn = useCallback(
+    async (qrData) => {
       try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const tokenFromUrl = urlParams.get("token");
-        const tokenFromStorage = localStorage.getItem("token");
-        const tokenToUse = tokenFromUrl || tokenFromStorage;
+        const token =
+          new URLSearchParams(window.location.search).get('token') ||
+          localStorage.getItem('token');
 
-        const response = await fetch('https://software-invite-api-self.vercel.app/guest/scan-qrcode', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${tokenToUse}`,
-          },
-          body: JSON.stringify({ qrData }),
-        });
+        const response = await fetch(
+          'https://software-invite-api-self.vercel.app/guest/scan-qrcode',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ qrData }),
+          }
+        );
 
         const data = await response.json();
-        setLoading(false);
-
-        if (response.status === 500) {
-          console.error("🚨 Server Error (500):", data);
-          setErrorMessage("Server error. Please try again.");
-          restartScannerAfterDelay();
-          return;
-        }
 
         if (response.status === 404) {
           setErrorMessage(
-            data.message.includes("Event not found")
-              ? "Event not found."
-              : "Guest not found."
+            data.message.includes('Event not found')
+              ? 'Event not found.'
+              : 'Guest not found.'
           );
           restartScannerAfterDelay();
-          return;
-        }
-
-        if (data.message?.includes("already checked in")) {
+        } else if (data.message?.includes('already checked in')) {
           const guest = data.guest;
-          const name = guest ? `${guest.firstName} ${guest.lastName}` : '';
-          setErrorMessage(`This access code has already been used${name ? ` by ${name}` : ''}.`);
+          const guestName = guest
+            ? `${guest.firstName} ${guest.lastName}`
+            : 'This access code';
+          setErrorMessage(`${guestName} has already been used.`);
           restartScannerAfterDelay();
-          return;
-        }
-
-        if (response.ok) {
+        } else if (response.ok) {
           setShowSuccess(true);
+          scannedCache.current.add(qrData);
           setTimeout(() => {
             setShowSuccess(false);
             restartScannerAfterDelay();
           }, 2000);
         } else {
-          setErrorMessage(data.message || "Unexpected server response.");
-          restartScannerAfterDelay();
+          setErrorMessage(data.message || 'Unexpected server response.');
+          setRetryData(qrData);
         }
-
       } catch (error) {
-        console.error("🚨 Error during check-in:", error);
-        setErrorMessage("Network/server error during check-in.");
-        setLoading(false);
-        restartScannerAfterDelay();
+        console.error('🚨 Error during check-in:', error);
+        setErrorMessage('Server error during check-in.');
+        setRetryData(qrData);
+      } finally {
+        setIsLoading(false);
       }
-    };
+    },
+    [restartScannerAfterDelay]
+  );
 
-    sendResultsToBackend(results);
-  }, [results, restartScannerAfterDelay]);
+  const processScan = useCallback(() => {
+    const qrData = results[0]?.decodedText?.trim();
+    if (!qrData || scannedCache.current.has(qrData)) return;
+
+    scannedCache.current.add(qrData); // prevent reprocessing
+    setIsLoading(true);
+    handleCheckIn(qrData);
+  }, [results, handleCheckIn]);
+
+  useEffect(() => {
+    if (results.length > 0) processScan();
+  }, [results, processScan]);
 
   return (
     <>
       <Snackbar
         open={Boolean(errorMessage)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        autoHideDuration={7000}
-        onClose={() => setErrorMessage("")}
+        autoHideDuration={null}
+        onClose={() => setErrorMessage('')}
         sx={{
           zIndex: 1500,
           mt: 4,
@@ -150,10 +135,28 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
             padding: '20px 30px',
             borderRadius: '12px',
             boxShadow: 6,
-          }
+          },
         }}
       >
-        <Alert severity="error" variant="filled">
+        <Alert
+          severity="error"
+          variant="filled"
+          action={
+            retryData && (
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => {
+                  setErrorMessage('');
+                  handleCheckIn(retryData);
+                  setRetryData(null);
+                }}
+              >
+                RETRY
+              </Button>
+            )
+          }
+        >
           {errorMessage}
         </Alert>
       </Snackbar>
@@ -163,14 +166,12 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
           Scanned Results ({results.length})
         </Typography>
 
-        {loading ? (
+        {isLoading ? (
           <Box display="flex" justifyContent="center" mt={4}>
             <CircularProgress />
           </Box>
-        ) : results.length > 0 ? (
-          <ResultContainerTable data={results} />
         ) : (
-          <Typography>No results found.</Typography>
+          <ResultContainerTable data={results} />
         )}
 
         <Snackbar
