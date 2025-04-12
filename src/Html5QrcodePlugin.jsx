@@ -1,45 +1,70 @@
-import { Html5QrcodeScanner } from 'html5-qrcode';
-import { useEffect } from 'react';
+import React, { useEffect, useImperativeHandle, forwardRef } from 'react';
+import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import { Box, Paper, Typography } from '@mui/material';
 
 const qrcodeRegionId = "html5qr-code-full-region";
 
-const createConfig = (props) => {
-    let config = {};
-    if (props.fps) config.fps = props.fps;
-    if (props.qrbox) config.qrbox = props.qrbox;
-    if (props.aspectRatio) config.aspectRatio = props.aspectRatio;
-    if (props.disableFlip !== undefined) config.disableFlip = props.disableFlip;
-    return config;
-};
+const createConfig = () => ({
+  fps: 15,
+  qrbox: 300,
+  aspectRatio: 1.0,
+  disableFlip: true,
+  supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+  experimentalFeatures: {
+    useBarCodeDetectorIfSupported: true
+  },
+  videoConstraints: {
+    facingMode: 'environment',
+    width: { ideal: 1280 },
+    height: { ideal: 720 }
+  }
+});
 
-const Html5QrcodePlugin = (props) => {
-    useEffect(() => {
-        const config = createConfig(props);
-        const verbose = props.verbose === true;
+// Make scanner externally controllable
+const Html5QrcodePlugin = forwardRef((props, ref) => {
+  let scanner;
 
-        if (!props.qrCodeSuccessCallback) {
-            throw new Error("qrCodeSuccessCallback is required callback.");
-        }
+  useEffect(() => {
+    const config = createConfig();
+    const verbose = props.verbose === true;
 
-        const html5QrcodeScanner = new Html5QrcodeScanner(qrcodeRegionId, config, verbose);
-        html5QrcodeScanner.render(props.qrCodeSuccessCallback, props.qrCodeErrorCallback);
+    if (!props.qrCodeSuccessCallback) {
+      throw new Error("qrCodeSuccessCallback is required callback.");
+    }
 
-        return () => {
-            html5QrcodeScanner.clear().catch(error => {
-                console.error("Failed to clear html5QrcodeScanner. ", error);
-            });
-        };
-    }, [props]);
+    scanner = new Html5QrcodeScanner(qrcodeRegionId, config, verbose);
 
-    return (
-        <Paper elevation={4} sx={{ p: 3, mt: 4 }}>
-            <Typography variant="h6" fontWeight="bold" gutterBottom>
-                Scan QR Code
-            </Typography>
-            <Box id={qrcodeRegionId} />
-        </Paper>
+    scanner.render(
+      props.qrCodeSuccessCallback,
+      props.qrCodeErrorCallback
     );
-};
+
+    return () => {
+      scanner.clear().catch(err => console.error("Clear failed", err));
+    };
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    restartScanner: () => {
+      scanner?.clear().then(() => {
+        scanner.render(
+          props.qrCodeSuccessCallback,
+          props.qrCodeErrorCallback
+        );
+      }).catch((err) => {
+        console.error("Error restarting scanner:", err);
+      });
+    }
+  }));
+
+  return (
+    <Paper elevation={4} sx={{ p: 3, mt: 4 }}>
+      <Typography variant="h6" fontWeight="bold" gutterBottom>
+        Scan QR Code
+      </Typography>
+      <Box id={qrcodeRegionId} />
+    </Paper>
+  );
+});
 
 export default Html5QrcodePlugin;
