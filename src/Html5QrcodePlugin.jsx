@@ -77,100 +77,81 @@
 //   export default Html5QrcodePlugin;
 
 
-
-import React, {
-    useEffect,
-    useImperativeHandle,
+import React, { 
+    useEffect, 
+    useRef, 
+    useImperativeHandle, 
     forwardRef,
-    useRef,
+    useCallback
   } from 'react';
-  import { Html5Qrcode } from 'html5-qrcode';
+  import { Html5QrcodeScanner } from 'html5-qrcode';
   import { Box, Paper, Typography } from '@mui/material';
   
   const qrcodeRegionId = "html5qr-code-full-region";
   
   const Html5QrcodePlugin = forwardRef((props, ref) => {
-    const html5QrCodeRef = useRef(null);
-    const cameraIdRef = useRef(null);
+    const scannerRef = useRef(null);
+    const isMounted = useRef(false);
   
-    const getConfig = () => ({
-      fps: props.fps || 15,
-      qrbox: props.qrbox || 250,
-      disableFlip: props.disableFlip ?? false,
-      videoConstraints: {
-        facingMode: "environment",
-        focusMode: "continuous",
-        width: { min: 640, ideal: 1280, max: 1920 },
-        height: { min: 480, ideal: 720, max: 1080 }
-      }
-    });
+    const startScanner = useCallback(() => {
+      if (!isMounted.current) return;
   
-    const startScanner = async () => {
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length) {
-          cameraIdRef.current = devices[0].id;
-  
-          if (!html5QrCodeRef.current) {
-            html5QrCodeRef.current = new Html5Qrcode(qrcodeRegionId);
-          }
-  
-          await html5QrCodeRef.current.start(
-            cameraIdRef.current,
-            getConfig(),
-            props.qrCodeSuccessCallback,
-            props.qrCodeErrorCallback
-          );
-        } else {
-          console.error("No cameras found.");
+      const config = {
+        fps: 15,
+        qrbox: 250,
+        disableFlip: false,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanner.SCAN_TYPE_CAMERA],
+        videoConstraints: {
+          facingMode: "environment",
+          focusMode: "continuous",
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 }
         }
-      } catch (err) {
-        console.error("Error starting scanner:", err);
-      }
-    };
+      };
+  
+      const html5QrcodeScanner = new Html5QrcodeScanner(
+        qrcodeRegionId, 
+        config, 
+        props.verbose || false
+      );
+  
+      html5QrcodeScanner.render(
+        props.qrCodeSuccessCallback,
+        props.qrCodeErrorCallback
+      );
+  
+      scannerRef.current = html5QrcodeScanner;
+    }, [props.qrCodeErrorCallback, props.qrCodeSuccessCallback, props.verbose]);
   
     useEffect(() => {
+      isMounted.current = true;
       startScanner();
   
       return () => {
-        if (html5QrCodeRef.current?.isScanning) {
-          html5QrCodeRef.current.stop()
-            .then(() => html5QrCodeRef.current.clear())
-            .catch((err) => console.error("Error stopping scanner on cleanup:", err));
-        }
+        isMounted.current = false;
+        scannerRef.current?.clear().catch(error => {
+          console.error("Failed to clear scanner: ", error);
+        });
       };
-    }, []);
+    }, [startScanner]);
   
     useImperativeHandle(ref, () => ({
-      async restartScanner() {
-        if (!html5QrCodeRef.current || !cameraIdRef.current) return;
-        try {
-          await html5QrCodeRef.current.stop();
-          await html5QrCodeRef.current.clear();
-          await html5QrCodeRef.current.start(
-            cameraIdRef.current,
-            getConfig(),
-            props.qrCodeSuccessCallback,
-            props.qrCodeErrorCallback
-          );
-        } catch (err) {
-          console.error("Failed to restart scanner:", err);
-        }
+      restartScanner: () => {
+        scannerRef.current?.clear().then(() => {
+          startScanner();
+        });
       },
-      async stopScanner() {
-        if (html5QrCodeRef.current?.isScanning) {
-          await html5QrCodeRef.current.stop();
-          await html5QrCodeRef.current.clear();
-        }
-      }
+      pauseScanner: () => scannerRef.current?.pause(),
+      resumeScanner: () => scannerRef.current?.resume()
     }));
   
     return (
-      <Paper elevation={4} sx={{
-        p: 3,
+      <Paper elevation={4} sx={{ 
+        p: 3, 
         mt: 4,
         '& video': {
-          filter: 'contrast(1.2) brightness(1.1)' // better scan visibility
+          filter: 'contrast(1.2) brightness(1.1)'
         }
       }}>
         <Typography variant="h6" fontWeight="bold" gutterBottom>
@@ -182,4 +163,3 @@ import React, {
   });
   
   export default Html5QrcodePlugin;
-  
