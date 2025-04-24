@@ -81,7 +81,7 @@ const Html5QrcodePlugin = forwardRef((props, ref) => {
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         Scan QR Code
       </Typography>
-      <Box id={qrcodeRegionId} sx={{ width: '100%', height: 300 }} />
+      <Box id={qrcodeRegionId} sx={{ width: '100%', height: 'fit-content' }} />
     </Paper>
   );
 });
