@@ -4,7 +4,7 @@ import Html5QrcodePlugin from './Html5QrcodePlugin';
 import ResultContainerPlugin from './ResultContainerPlugin';
 
 const App = () => {
-  const scannerRef = useRef(null); // Properly set up ref
+  const scannerRef = useRef(null); 
   const [decodedResults, setDecodedResults] = useState([]);
 
   const onNewScanResult = (decodedText, decodedResult) => {
@@ -37,50 +37,3 @@ const App = () => {
 };
 
 export default App;
-
-
-
-
-
-// import React, { useRef, useState } from 'react';
-// import './App.css';
-// import Html5QrcodePlugin from './Html5QrcodePlugin';
-// import ResultContainerPlugin from './ResultContainerPlugin';
-
-// const App = () => {
-//   const scannerRef = useRef(null);
-//   const [decodedResults, setDecodedResults] = useState([]);
-
-//   const onNewScanResult = (decodedText, decodedResult) => {
-//     console.log("Scan result:", decodedResult);
-    
-//     // Add new result without clearing previous ones
-//     setDecodedResults(prev => [...prev, { decodedText, result: decodedResult }]);
-    
-//     // No longer pausing the scanner - continuous scanning
-//   };
-
-//   return (
-//     <div className="App">
-//       <section className="App-section">
-//         <div className="App-section-title">SoftInvites Check-in</div>
-//         <Html5QrcodePlugin
-//           scannerRef={scannerRef}
-//           fps={10}
-//           qrbox={250}
-//           disableFlip={false}
-//           qrCodeSuccessCallback={onNewScanResult}
-//           qrCodeErrorCallback={(error) => {
-//             console.warn("QR Error:", error);
-//           }}
-//         />
-//         <ResultContainerPlugin 
-//           results={decodedResults}
-//           scannerRef={scannerRef}
-//         />
-//       </section>
-//     </div>
-//   );
-// };
-
-// export default App;
