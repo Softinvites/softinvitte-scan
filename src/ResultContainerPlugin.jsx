@@ -5,10 +5,17 @@ import {
   Alert,
   Button,
   Typography,
-  List,
-  ListItem,
-  ListItemText
+  // List,
+  // ListItem,
+  // ListItemText
 } from '@mui/material';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
 
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
@@ -155,13 +162,32 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       {/* Last scanned guests list */}
       <Box mt={4}>
         <Typography variant="h6" gutterBottom>Last Scanned Guests</Typography>
-        <List dense>
+        {/* <List dense>
           {lastScannedGuests.map((guest, index) => (
             <ListItem key={index}>
               <ListItemText primary={guest.name} />
+              <ListItemText primary={guest.seatNo} />
             </ListItem>
           ))}
-        </List>
+        </List> */}
+        <TableContainer component={Paper}>
+  <Table size="small" aria-label="Last Scanned Guests Table">
+    <TableHead>
+      <TableRow>
+        <TableCell><strong>Full Name</strong></TableCell>
+        <TableCell><strong>Seat No.</strong></TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {lastScannedGuests.map((guest, index) => (
+        <TableRow key={index}>
+          <TableCell>{guest.name}</TableCell>
+          <TableCell>{guest.seatNo}</TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+</TableContainer>
       </Box>
     </Box>
   );
