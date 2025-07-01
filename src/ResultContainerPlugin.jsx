@@ -52,7 +52,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         const guest = data.guest;
         setErrorMessage(
           guest
-            ? `${guest.firstName} ${guest.lastName} already checked in`
+            ? `${guest.fullname} already checked in`
             : 'This guest already checked in'
         );
       } else if (response.ok) {
@@ -60,7 +60,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         setScanStatusColor('green');
         setShowSuccess(true);
         scannedCache.current.set(qrData, Date.now());
-        setLastScannedGuests(prev => [{ name: `${data.guest.firstName} ${data.guest.lastName}` }, ...prev].slice(0, 5));
+        setLastScannedGuests(prev => [{ name: `${data.guest.fullname}` }, {seatNo: `${data.guest.seatNo}`},  ...prev].slice(0, 5));
         setTimeout(() => setShowSuccess(false), 2000);
       } else {
         errorSoundRef.current?.play();
