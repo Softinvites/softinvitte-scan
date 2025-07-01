@@ -160,7 +160,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       </Snackbar>
 
       {/* Last scanned guests list */}
-      <Box mt={4}>
+      <Box mt={4} sx={{ overflow: 'hidden', width: '100%', maxWidth: 300 }}> 
         <Typography variant="h6" gutterBottom>Last Scanned Guests</Typography>
         {/* <List dense>
           {lastScannedGuests.map((guest, index) => (
@@ -170,7 +170,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
             </ListItem>
           ))}
         </List> */}
-        <TableContainer component={Paper}>
+<TableContainer component={Paper} sx={{ width: '100%' }}>
   <Table size="small" aria-label="Last Scanned Guests Table">
     <TableHead>
       <TableRow>
@@ -181,13 +181,14 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
     <TableBody>
       {lastScannedGuests.map((guest, index) => (
         <TableRow key={index}>
-          <TableCell>{guest.name}</TableCell>
-          <TableCell>{guest.seatNo}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.name}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.seatNo}</TableCell>
         </TableRow>
       ))}
     </TableBody>
   </Table>
 </TableContainer>
+
       </Box>
     </Box>
   );
