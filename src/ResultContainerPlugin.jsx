@@ -67,7 +67,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         setScanStatusColor('green');
         setShowSuccess(true);
         scannedCache.current.set(qrData, Date.now());
-        setLastScannedGuests(prev => [{ name: `${data.guest.fullname}` }, {seatNo: `${data.guest.seatNo}`},  ...prev].slice(0, 5));
+        setLastScannedGuests(prev => [{ name: `${data.guest.fullname}` }, {TableNo: `${data.guest.TableNo}`},{busNo: `${data.guest.others}`},  ...prev].slice(0, 5));
         setTimeout(() => setShowSuccess(false), 2000);
       } else {
         errorSoundRef.current?.play();
@@ -162,27 +162,21 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       {/* Last scanned guests list */}
       <Box mt={4} sx={{ overflow: 'hidden', width: '100%', maxWidth: 300 }}> 
         <Typography variant="h6" gutterBottom>Last Scanned Guests</Typography>
-        {/* <List dense>
-          {lastScannedGuests.map((guest, index) => (
-            <ListItem key={index}>
-              <ListItemText primary={guest.name} />
-              <ListItemText primary={guest.seatNo} />
-            </ListItem>
-          ))}
-        </List> */}
 <TableContainer component={Paper} sx={{ width: '100%' }}>
   <Table size="small" aria-label="Last Scanned Guests Table">
     <TableHead>
       <TableRow>
         <TableCell><strong>Full Name</strong></TableCell>
-        <TableCell><strong>Seat No.</strong></TableCell>
+        <TableCell><strong>Table No.</strong></TableCell>
+        <TableCell><strong>Bus No.</strong></TableCell>
       </TableRow>
     </TableHead>
     <TableBody>
       {lastScannedGuests.map((guest, index) => (
         <TableRow key={index}>
           <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.name}</TableCell>
-          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.seatNo}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.TableNo}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.busNo}</TableCell>
         </TableRow>
       ))}
     </TableBody>
