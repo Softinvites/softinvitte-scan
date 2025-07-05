@@ -190,7 +190,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
     mx: 'auto', // center the table horizontally
   }}
 >
-  <Table size="small" aria-label="Last Scanned Guests Table">
+  <Table aria-label="Last Scanned Guests Table">
     <TableHead>
       <TableRow>
         <TableCell sx={{ width: '40%' }}><strong>Full Name</strong></TableCell>
