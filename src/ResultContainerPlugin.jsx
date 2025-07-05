@@ -162,7 +162,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       {/* Last scanned guests list */}
       <Box mt={4} sx={{ overflow: 'hidden', width: '100%', maxWidth: 300 }}> 
         <Typography variant="h6" gutterBottom>Last Scanned Guests</Typography>
-<TableContainer component={Paper} sx={{ width: '100%' }}>
+{/* <TableContainer component={Paper} sx={{ width: '100%' }}>
   <Table size="small" aria-label="Last Scanned Guests Table">
     <TableHead>
       <TableRow>
@@ -181,7 +181,35 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       ))}
     </TableBody>
   </Table>
+</TableContainer> */}
+<TableContainer
+  component={Paper}
+  sx={{
+    width: '100%',
+    maxWidth: 500, // Optional: controls container size
+    mx: 'auto', // center the table horizontally
+  }}
+>
+  <Table size="small" aria-label="Last Scanned Guests Table">
+    <TableHead>
+      <TableRow>
+        <TableCell sx={{ width: '40%' }}><strong>Full Name</strong></TableCell>
+        <TableCell sx={{ width: '30%' }}><strong>Table No.</strong></TableCell>
+        <TableCell sx={{ width: '30%' }}><strong>Bus No.</strong></TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {lastScannedGuests.map((guest, index) => (
+        <TableRow key={index}>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.name}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.TableNo}</TableCell>
+          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.busNo}</TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
 </TableContainer>
+
 
       </Box>
     </Box>
