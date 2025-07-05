@@ -12,10 +12,11 @@ import {
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
+// import TableContainer from '@mui/material/TableContainer';
+
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
+// import Paper from '@mui/material/Paper';
 
 const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [showSuccess, setShowSuccess] = useState(false);
@@ -108,7 +109,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   }, [propsResults, handleCheckIn]);
 
   return (
-    <Box sx={{ padding: 4 }}>
+    <Box sx={{ padding: 4 , width: '100%' }} >
       <audio ref={successSoundRef} src="/sounds/success.mp3" preload="auto" />
       <audio ref={errorSoundRef} src="/sounds/error.mp3" preload="auto" />
 
@@ -160,11 +161,13 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       </Snackbar>
 
       {/* Last scanned guests list */}
-      <Box mt={4} sx={{ overflow: 'hidden', width: '100%', maxWidth: 300 }}> 
+      <Box mt={4} sx={{ width: '90%', marginLeft:"5%", display:"flex", justifyContent:"center", flexDirection:"column", alignItems:"center" }}> 
         <Typography variant="h6" gutterBottom>Last Scanned Guests</Typography>
-{/* <TableContainer component={Paper} sx={{ width: '100%' }}>
-  <Table size="small" aria-label="Last Scanned Guests Table">
-    <TableHead>
+
+    {/* <TableContainer component={Paper} sx={{ width: '100%' }}> */}
+<Table aria-label="Last Scanned Guests Table" sx={{ width: '100%' }}>
+
+    <TableHead sx={{ width: '100%' }}>
       <TableRow>
         <TableCell><strong>Full Name</strong></TableCell>
         <TableCell><strong>Table No.</strong></TableCell>
@@ -181,34 +184,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       ))}
     </TableBody>
   </Table>
-</TableContainer> */}
-<TableContainer
-  component={Paper}
-  sx={{
-    width: '100%',
-    maxWidth: 500, // Optional: controls container size
-    mx: 'auto', // center the table horizontally
-  }}
->
-  <Table aria-label="Last Scanned Guests Table">
-    <TableHead>
-      <TableRow>
-        <TableCell sx={{ width: '40%' }}><strong>Full Name</strong></TableCell>
-        <TableCell sx={{ width: '30%' }}><strong>Table No.</strong></TableCell>
-        <TableCell sx={{ width: '30%' }}><strong>Bus No.</strong></TableCell>
-      </TableRow>
-    </TableHead>
-    <TableBody>
-      {lastScannedGuests.map((guest, index) => (
-        <TableRow key={index}>
-          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.name}</TableCell>
-          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.TableNo}</TableCell>
-          <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.busNo}</TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-</TableContainer>
+{/* </TableContainer> */}
 
 
       </Box>
