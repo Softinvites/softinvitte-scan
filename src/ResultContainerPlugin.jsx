@@ -5,9 +5,6 @@ import {
   Alert,
   Button,
   Typography,
-  // List,
-  // ListItem,
-  // ListItemText
 } from '@mui/material';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -35,7 +32,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         new URLSearchParams(window.location.search).get('token');
 
       const response = await fetch(
-        'https://software-invite-api-self.vercel.app/guest/scan-qrcode',
+        'https://292x833w13.execute-api.us-east-2.amazonaws.com/guest/scan-qrcode',
         {
           method: 'POST',
           headers: {
