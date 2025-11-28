@@ -54,7 +54,7 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
         const response = await fetch(
-          'https://software-invite-api-self.vercel.app/guest/scan-qrcode',
+          'https://292x833w13.execute-api.us-east-2.amazonaws.com/guest/scan-qrcode',
           {
             method: 'POST',
             headers,
