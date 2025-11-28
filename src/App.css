@@ -41,21 +41,48 @@
 }
 
 #html5qr-code-full-region {
-    background-color: #adb5bd;
+    background-color: #f8f9fa;
     color: #282c34;
     font-size: 12pt;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-@media(max-width: 640px) {
+/* Optimized responsive sizing */
+@media(max-width: 480px) {
     #html5qr-code-full-region {
-        width: 300px;
+        width: 280px;
+        height: 280px;
     }
 }
 
-@media(min-width: 640px) {
+@media(min-width: 481px) and (max-width: 768px) {
     #html5qr-code-full-region {
-        width: 600px;
+        width: 350px;
+        height: 350px;
     }
+}
+
+@media(min-width: 769px) {
+    #html5qr-code-full-region {
+        width: 400px;
+        height: 400px;
+    }
+}
+
+/* Video element optimizations */
+#html5qr-code-full-region video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Canvas optimizations for better performance */
+#html5qr-code-full-region canvas {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
 }
 
 /* Updated responsive result container */
@@ -121,17 +148,52 @@ a {
     color: white;
 }
 
+/* Performance optimizations */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Allow text selection for important elements */
+input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    -khtml-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
 /* Additional responsive adjustments */
 @media(max-width: 480px) {
     .App-section-title {
         font-size: calc(8px + 2vmin);
+        margin-bottom: 20px;
     }
     
     th, td {
-        padding: 10px;
+        padding: 8px;
+        font-size: 0.875rem;
     }
     
     .Result-header {
         font-size: 14pt;
     }
+    
+    .App-section {
+        padding: 10px;
+    }
+}
+
+/* Smooth transitions for better UX */
+.MuiAlert-root {
+    transition: all 0.3s ease-in-out;
+}
+
+.MuiTableRow-root {
+    transition: background-color 0.2s ease;
 }

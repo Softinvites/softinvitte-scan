@@ -1,19 +1,16 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   Box,
   Snackbar,
   Alert,
   Button,
   Typography,
-  // List,
-  // ListItem,
-  // ListItemText
+  CircularProgress
 } from '@mui/material';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
-
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
@@ -24,71 +21,136 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
   const [retryData, setRetryData] = useState(null);
   const [lastScannedGuests, setLastScannedGuests] = useState([]);
   const [scanStatusColor, setScanStatusColor] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const successSoundRef = useRef(null);
   const errorSoundRef = useRef(null);
   const scannedCache = useRef(new Map()); 
-  const cooldown = 2000;
+  const requestQueue = useRef([]);
+  const isProcessingQueue = useRef(false);
+  const cooldown = 1500; // Reduced cooldown for better performance
 
-  const handleCheckIn = useCallback(async (qrData) => {
-    try {
-      const token = localStorage.getItem('token') ||
-        new URLSearchParams(window.location.search).get('token');
+  // Process queue to handle multiple rapid scans
+  const processQueue = useCallback(async () => {
+    if (isProcessingQueue.current || requestQueue.current.length === 0) {
+      return;
+    }
+    
+    isProcessingQueue.current = true;
+    setIsProcessing(true);
+    
+    while (requestQueue.current.length > 0) {
+      const qrData = requestQueue.current.shift();
+      
+      try {
+        const token = localStorage.getItem('token') ||
+          new URLSearchParams(window.location.search).get('token');
 
-      const response = await fetch(
-        'https://software-invite-api-self.vercel.app/guest/scan-qrcode',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ qrData }),
-        }
-      );
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        };
 
-      const data = await response.json();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-      if (response.status === 404) {
-        errorSoundRef.current?.play();
-        setScanStatusColor('red');
-        setErrorMessage(data.message?.includes('Event not found')
-          ? 'Event not found.'
-          : 'Guest not found.');
-      } else if (data.message?.includes('already checked in')) {
-        errorSoundRef.current?.play();
-        setScanStatusColor('red');
-        const guest = data.guest;
-        setErrorMessage(
-          guest
-            ? `${guest.fullname} already checked in`
-            : 'This guest already checked in'
+        const response = await fetch(
+          'https://software-invite-api-self.vercel.app/guest/scan-qrcode',
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ qrData }),
+            signal: controller.signal
+          }
         );
-      } else if (response.ok) {
-        successSoundRef.current?.play();
-        setScanStatusColor('green');
-        setShowSuccess(true);
-        scannedCache.current.set(qrData, Date.now());
-        setLastScannedGuests(prev => [{ name: `${data.guest.fullname}` }, {TableNo: `${data.guest.TableNo}`},{busNo: `${data.guest.others}`},  ...prev].slice(0, 5));
-        setTimeout(() => setShowSuccess(false), 2000);
-      } else {
-        errorSoundRef.current?.play();
+        
+        clearTimeout(timeoutId);
+        await handleResponse(response, qrData);
+        
+        // Small delay between requests to prevent overwhelming
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error('Queue processing error:', error);
+        if (error.name === 'AbortError') {
+          setErrorMessage('Request timeout. Please try again.');
+        } else {
+          setErrorMessage('Network error. Please check connection.');
+        }
         setScanStatusColor('red');
-        setErrorMessage(data.message || 'Check-in failed');
-        setRetryData(qrData);
+        errorSoundRef.current?.play();
       }
+    }
+    
+    isProcessingQueue.current = false;
+    setIsProcessing(false);
+  }, []);
 
-      // Reset scan status color after a short delay
-      setTimeout(() => setScanStatusColor(null), 1000);
+  const handleResponse = useCallback(async (response, qrData) => {
+    const data = await response.json();
 
-    } catch (error) {
+    if (response.status === 404) {
       errorSoundRef.current?.play();
       setScanStatusColor('red');
-      console.error('Check-in error:', error);
-      setErrorMessage('Network error during check-in');
+      setErrorMessage(data.message?.includes('Event not found')
+        ? 'Event not found.'
+        : 'Guest not found.');
+    } else if (response.status === 403) {
+      errorSoundRef.current?.play();
+      setScanStatusColor('red');
+      setErrorMessage(data.message || 'Access denied - Wrong event or unauthorized');
+    } else if (response.status === 410) {
+      errorSoundRef.current?.play();
+      setScanStatusColor('red');
+      setErrorMessage('Event has expired. Check-in is no longer available.');
+    } else if (response.status === 401) {
+      errorSoundRef.current?.play();
+      setScanStatusColor('red');
+      setErrorMessage('Scanner authorization expired. Please refresh the link.');
+    } else if (data.message?.includes('Event is not active')) {
+      errorSoundRef.current?.play();
+      setScanStatusColor('red');
+      setErrorMessage('Event is currently inactive. Check-in is disabled.');
+    } else if (data.message?.includes('already checked in')) {
+      errorSoundRef.current?.play();
+      setScanStatusColor('red');
+      const guest = data.guest;
+      setErrorMessage(
+        guest
+          ? `${guest.fullname} already checked in`
+          : 'This guest already checked in'
+      );
+    } else if (response.ok) {
+      successSoundRef.current?.play();
+      setScanStatusColor('green');
+      setShowSuccess(true);
+      scannedCache.current.set(qrData, Date.now());
+      
+      // Optimized guest data structure
+      const guestData = {
+        name: data.guest.fullname || 'Unknown',
+        tableNo: data.guest.TableNo || 'N/A',
+        busNo: data.guest.others || 'N/A',
+        timestamp: new Date().toLocaleTimeString()
+      };
+      
+      setLastScannedGuests(prev => [guestData, ...prev].slice(0, 3));
+      setTimeout(() => setShowSuccess(false), 1500);
+    } else {
+      errorSoundRef.current?.play();
+      setScanStatusColor('red');
+      setErrorMessage(data.message || 'Check-in failed');
       setRetryData(qrData);
-      setTimeout(() => setScanStatusColor(null), 1000);
     }
+
+    // Reset scan status color after a short delay
+    setTimeout(() => setScanStatusColor(null), 800);
   }, []);
+
+  const handleCheckIn = useCallback((qrData) => {
+    // Add to queue instead of processing immediately
+    requestQueue.current.push(qrData);
+    processQueue();
+  }, [processQueue]);
 
   useEffect(() => {
     if (!propsResults || propsResults.length === 0) return;
@@ -160,33 +222,63 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         </Alert>
       </Snackbar>
 
-      {/* Last scanned guests list */}
-      <Box mt={4} sx={{ width: '90%', marginLeft:"5%", display:"flex", justifyContent:"center", flexDirection:"column", alignItems:"center" }}> 
-  <Typography variant="h6" gutterBottom>Last Scanned Guests</Typography>
+      {/* Processing indicator */}
+      {isProcessing && (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
+          <CircularProgress size={20} sx={{ mr: 1 }} />
+          <Typography variant="body2">Processing...</Typography>
+        </Box>
+      )}
 
-  <TableContainer component={Paper} sx={{ width: '100%' }}>
-    <Table aria-label="Last Scanned Guests Table" sx={{ width: '100%' }}>
-      <TableHead>
-        <TableRow>
-          <TableCell><strong>Full Name</strong></TableCell>
-          <TableCell><strong>Table No.</strong></TableCell>
-          <TableCell><strong>Bus No.</strong></TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {lastScannedGuests.map((guest, index) => (
-          <TableRow key={index}>
-            <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.name}</TableCell>
-            <TableCell sx={{ whiteSpace: 'nowrap' }}>{guest.TableNo}</TableCell>
-            <TableCell sx={{ whiteSpace: 'nowrap' }}>
-              {guest.busNo ?? 'N/A'}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  </TableContainer>
-</Box>
+      {/* Last scanned guests list - Optimized layout */}
+      <Box mt={4} sx={{ width: '95%', marginLeft: '2.5%', display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center' }}> 
+        <Typography variant="h6" gutterBottom>Last 3 Scanned Guests</Typography>
+
+        <TableContainer component={Paper} sx={{ width: '100%', maxWidth: 600 }}>
+          <Table aria-label="Last Scanned Guests Table" size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Table</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Bus</TableCell>
+                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Time</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {lastScannedGuests.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                    No guests scanned yet
+                  </TableCell>
+                </TableRow>
+              ) : (
+                lastScannedGuests.map((guest, index) => (
+                  <TableRow key={`${guest.name}-${index}`} sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}>
+                    <TableCell sx={{ 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      maxWidth: 120,
+                      fontSize: '0.875rem'
+                    }}>
+                      {guest.name}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
+                      {guest.tableNo}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
+                      {guest.busNo}
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'text.secondary' }}>
+                      {guest.timestamp}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
     </Box>
   );
