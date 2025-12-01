@@ -241,8 +241,6 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Table</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Bus</TableCell>
                 <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Time</TableCell>
               </TableRow>
             </TableHead>
@@ -264,12 +262,6 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
                       fontSize: '0.875rem'
                     }}>
                       {guest.name}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
-                      {guest.tableNo}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
-                      {guest.busNo}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'text.secondary' }}>
                       {guest.timestamp}
