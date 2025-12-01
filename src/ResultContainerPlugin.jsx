@@ -114,9 +114,10 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       errorSoundRef.current?.play();
       setScanStatusColor('red');
       const guest = data.guest;
+      const checkedInTime = guest?.checkedInAt ? new Date(guest.checkedInAt).toLocaleString() : 'Unknown time';
       setErrorMessage(
         guest
-          ? `${guest.fullname} already checked in`
+          ? `${guest.fullname} already checked in at ${checkedInTime}`
           : 'This guest already checked in'
       );
     } else if (response.ok) {
@@ -125,12 +126,13 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
       setShowSuccess(true);
       scannedCache.current.set(qrData, Date.now());
       
-      // Optimized guest data structure
+      // Enhanced guest data structure with check-in timestamp
       const guestData = {
         name: data.guest.fullname || 'Unknown',
         tableNo: data.guest.TableNo || 'N/A',
         busNo: data.guest.others || 'N/A',
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: data.guest.checkedInAt ? new Date(data.guest.checkedInAt).toLocaleTimeString() : new Date().toLocaleTimeString(),
+        checkedInAt: data.guest.checkedInAt
       };
       
       setLastScannedGuests(prev => [guestData, ...prev].slice(0, 3));
