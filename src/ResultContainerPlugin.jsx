@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import * as Sentry from '@sentry/react';
 import {
   Box,
   Snackbar,
@@ -70,6 +71,10 @@ const ResultContainerPlugin = ({ results: propsResults, scannerRef }) => {
         await new Promise(resolve => setTimeout(resolve, 100));
         
       } catch (error) {
+        Sentry.captureException(error, {
+          tags: { section: 'qr-scanner', action: 'scan' },
+          extra: { qrData }
+        });
         console.error('Queue processing error:', error);
         if (error.name === 'AbortError') {
           setErrorMessage('Request timeout. Please try again.');
