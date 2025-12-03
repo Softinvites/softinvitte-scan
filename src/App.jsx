@@ -2,7 +2,6 @@ import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import './App.css';
 import Html5QrcodePlugin from './Html5QrcodePlugin';
 import ResultContainerPlugin from './ResultContainerPlugin';
-import * as Sentry from "@sentry/react";
 
 const App = () => {
   const scannerRef = useRef(null); 
@@ -26,17 +25,11 @@ const App = () => {
             .then(res => res.json())
             .then(data => setEventName(data.event?.name || 'Event'))
             .catch((error) => {
-              Sentry.captureException(error, {
-                tags: { section: 'qr-scanner', action: 'fetch_event' },
-                extra: { eventId: payload.eventId }
-              });
+              console.error('Event fetch error:', error);
               setEventName('Event');
             });
         }
       } catch (error) {
-        Sentry.captureException(error, {
-          tags: { section: 'qr-scanner', action: 'token_decode' }
-        });
         console.error('Token decode error:', error);
       }
     }
@@ -90,11 +83,4 @@ const App = () => {
   );
 };
 
-export default Sentry.withErrorBoundary(React.memo(App), {
-  fallback: ({ error }) => (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
-      <h2>Something went wrong</h2>
-      <p>Please refresh the page or contact support</p>
-    </div>
-  ),
-});
+export default React.memo(App);
